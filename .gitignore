@@ -1,0 +1,53 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyd
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local data
+data/pdfs/*
+data/vector_store/*
+data/uploads/*
+
+# Logs / temporary files
+*.log
+*.tmp
+*.cache
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local caches
+__pycache__/
+.cache/
+# Root FAISS vector store
+vector_store/
+
+# Local AI/editor tooling
+.agents/
+.claude/
+.windsurf/
+
+.git-old-threadbase/
