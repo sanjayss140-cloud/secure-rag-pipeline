@@ -1,57 +1,109 @@
+from typing import Any
+
+from langchain_core.documents import Document
+
 from llm import llm
 from retriever import get_relevant_documents
 
 
-def ask_question(question: str, chat_history=None):
-    if chat_history is None:
-        chat_history = []
+FALLBACK_RESPONSE = (
+    "I couldn't find enough information in the uploaded documents."
+)
 
-    # Keep conversation context small.
-    history_text = ""
 
-    for message in chat_history[-4:]:
-        role = message.get("role", "").upper()
-        content = message.get("content", "").strip()
+def _clean_llm_response(content: Any) -> str:
+    """Remove model reasoning blocks and return only the final answer."""
+    answer = str(content).strip()
 
-        if content:
-            history_text += f"{role}: {content}\n"
+    # Remove <think>...</think> reasoning returned by some hosted models.
+    if "<think>" in answer and "</think>" in answer:
+        answer = answer.split("</think>", 1)[1].strip()
 
-    # Retrieve using the current question.
-    docs = get_relevant_documents(question)
+    # Handle an opening <think> tag without a closing tag defensively.
+    elif "<think>" in answer:
+        answer = answer.split("<think>", 1)[0].strip()
 
+    return answer
+
+
+def _format_context(docs: list[Document]) -> str:
+    """Build a clean context string from retrieved documents."""
     if not docs:
-        return (
-            "I couldn't find enough information in the uploaded documents.",
-            [],
-        )
+        return ""
 
     context_parts = []
 
-    for i, doc in enumerate(docs, start=1):
-        source = doc.metadata.get(
-            "source",
-            "Unknown document",
-        )
+    for index, doc in enumerate(docs, start=1):
+        metadata = doc.metadata or {}
 
-        page = doc.metadata.get("page")
-
-        page_text = (
-            f"Page {page + 1}"
-            if page is not None
-            else "Page unknown"
-        )
+        source = metadata.get("source", "Unknown source")
+        page = metadata.get("page", metadata.get("page_number", "Unknown"))
+        score = metadata.get("score", "N/A")
 
         context_parts.append(
-            f"[SOURCE {i} | {source} | {page_text}]\n"
-            f"{doc.page_content.strip()}"
+            f"""
+--- Document Chunk {index} ---
+Source: {source}
+Page: {page}
+Score: {score}
+ID: {metadata.get("id", "N/A")}
+
+{doc.page_content}
+""".strip()
         )
 
-    context = "\n\n".join(context_parts)
+    return "\n\n".join(context_parts)
+
+
+def ask_question(
+    question: str,
+    history: list[dict[str, str]] | None = None,
+):
+    """
+    Answer a question using retrieved document context.
+
+    Returns:
+        tuple[str, list[Document]]: cleaned answer and retrieved documents.
+    """
+    history = history or []
+
+    docs = get_relevant_documents(question)
+
+    if not docs:
+        return FALLBACK_RESPONSE, []
+
+    context = _format_context(docs)
+
+    history_text = ""
+
+    if history:
+        history_lines = []
+
+        for message in history:
+            role = message.get("role", "user")
+            content = message.get("content", "")
+
+            if content:
+                history_lines.append(f"{role.upper()}: {content}")
+
+        history_text = "\n".join(history_lines)
 
     prompt = f"""
-You are a precise private document assistant.
+You are a private document question-answering assistant.
 
-Your factual source is ONLY the document context below.
+Answer the user's question ONLY using the supplied document context.
+
+Rules:
+1. Use only information contained in the document context.
+2. For exact-value questions, extract the exact value from the context.
+3. Do not replace a value with a guess.
+4. Do not invent information.
+5. For explanation or summary questions, synthesize the supplied context.
+6. If the required information is genuinely absent from the context, reply exactly:
+"I couldn't find enough information in the uploaded documents."
+7. Give only the final answer.
+8. Do not reveal your reasoning process.
+9. Do not output <think> blocks.
 
 Conversation history:
 {history_text}
@@ -59,33 +111,17 @@ Conversation history:
 Document context:
 {context}
 
-Current question:
+User question:
 {question}
-
-Instructions:
-
-1. Answer the current question directly.
-2. If the question asks for an exact value such as:
-   - enrollment number
-   - registration number
-   - phone number
-   - email
-   - date
-   - name
-   - address
-   - score
-   - ID
-   then extract the exact value from the document context.
-3. Do not replace a value with a guess.
-4. Do not invent information.
-5. For explanation or summary questions, synthesize the supplied context.
-6. If the required information is genuinely absent from the context,
-   reply exactly:
-   "I couldn't find enough information in the uploaded documents."
 
 Answer:
 """
 
     response = llm.invoke(prompt)
 
-    return response.content.strip(), docs
+    answer = _clean_llm_response(response.content)
+
+    if not answer:
+        answer = FALLBACK_RESPONSE
+
+    return answer, docs
