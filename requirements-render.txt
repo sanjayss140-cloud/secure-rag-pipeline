@@ -19,3 +19,4 @@ faiss-cpu==1.13.2
 pymupdf==1.26.7
 pytesseract==0.3.13
 Pillow==12.3.0
+langchain-openai==1.4.1
