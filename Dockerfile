@@ -5,9 +5,16 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements-docker.txt .
 
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.13.0 && pip install --no-cache-dir --timeout 600 --retries 10 -r requirements-docker.txt
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.13.0 \
+    && pip install --no-cache-dir -r requirements-docker.txt
 
 COPY . .
 

@@ -1,150 +1,54 @@
+import os
 from pathlib import Path
 
-import fitz
 import pytesseract
 
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
-from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-
-from config import (
-    PDF_DIR,
-    VECTOR_STORE_DIR,
-    EMBEDDING_MODEL,
-    CHUNK_SIZE,
-    CHUNK_OVERLAP,
-)
+# Use the system Tesseract binary on Linux/Render.
+# Keep Windows support when running locally.
+if os.name == "nt":
+    windows_tesseract = Path(
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
+    if windows_tesseract.exists():
+        pytesseract.pytesseract.tesseract_cmd = str(windows_tesseract)
 
 
-TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+def extract_text_with_ocr(image_path: str | Path) -> str:
+    """Extract text from an image using Tesseract OCR."""
+    return pytesseract.image_to_string(str(image_path))
 
 
-def preprocess_image(image):
+def process_pdf_with_ocr(pdf_path: str | Path) -> str:
     """
-    Improve scanned PDF images before OCR.
+    Process a PDF and extract OCR text from its pages.
+
+    Uses PyMuPDF to render pages to images, then Tesseract for OCR.
     """
-    image = ImageOps.grayscale(image)
+    import fitz
 
-    image = ImageEnhance.Contrast(image).enhance(1.6)
+    pdf_path = Path(pdf_path)
 
-    image = ImageEnhance.Sharpness(image).enhance(1.4)
+    document = fitz.open(str(pdf_path))
+    extracted_text = []
 
-    image = image.filter(ImageFilter.SHARPEN)
+    try:
+        for page_number, page in enumerate(document):
+            pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2))
 
-    return image
-
-
-def extract_documents_with_ocr():
-    pdf_files = list(Path(PDF_DIR).glob("*.pdf"))
-
-    if not pdf_files:
-        raise ValueError("No PDF files were found.")
-
-    documents = []
-
-    for pdf_path in pdf_files:
-
-        pdf = fitz.open(pdf_path)
-
-        for page_number, page in enumerate(pdf):
-
-            # First try normal PDF text extraction.
-            text = page.get_text("text").strip()
-
-            if text:
-
-                documents.append(
-                    Document(
-                        page_content=text,
-                        metadata={
-                            "source": str(pdf_path),
-                            "page": page_number,
-                            "method": "text",
-                        },
-                    )
-                )
-
-                continue
-
-            # OCR fallback.
-            pix = page.get_pixmap(
-                matrix=fitz.Matrix(3, 3),
-                alpha=False,
+            image_path = pdf_path.with_name(
+                f"{pdf_path.stem}_page_{page_number + 1}.png"
             )
 
-            image = Image.frombytes(
-                "RGB",
-                [pix.width, pix.height],
-                pix.samples,
-            )
+            pixmap.save(str(image_path))
 
-            image = preprocess_image(image)
+            try:
+                text = extract_text_with_ocr(image_path)
+                if text.strip():
+                    extracted_text.append(text.strip())
+            finally:
+                image_path.unlink(missing_ok=True)
+    finally:
+        document.close()
 
-            ocr_text = pytesseract.image_to_string(
-                image,
-                config="--psm 6",
-            ).strip()
-
-            if ocr_text:
-
-                documents.append(
-                    Document(
-                        page_content=ocr_text,
-                        metadata={
-                            "source": str(pdf_path),
-                            "page": page_number,
-                            "method": "ocr",
-                        },
-                    )
-                )
-
-        pdf.close()
-
-    return documents
-
-
-def rebuild_vector_database():
-
-    documents = extract_documents_with_ocr()
-
-    if not documents:
-        raise ValueError(
-            "No readable text could be extracted from the PDF."
-        )
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-    )
-
-    chunks = splitter.split_documents(documents)
-
-    chunks = [
-        chunk
-        for chunk in chunks
-        if chunk.page_content.strip()
-    ]
-
-    if not chunks:
-        raise ValueError(
-            "No usable text was found after OCR/text extraction."
-        )
-
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL
-    )
-
-    vector_db = FAISS.from_documents(
-        chunks,
-        embeddings,
-    )
-
-    vector_db.save_local(
-        str(VECTOR_STORE_DIR)
-    )
-
-    return len(chunks)
+    return "\n\n".join(extracted_text)
