@@ -266,8 +266,13 @@ def chat(request: ChatRequest):
         }
 
     except Exception as exc:
+        import traceback
 
-        raise HTTPException(
-            status_code=500,
-            detail=str(exc),
-        ) from exc
+        traceback.print_exc()
+
+        return {
+            "success": False,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+        }
