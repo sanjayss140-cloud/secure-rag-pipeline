@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from config import PDF_DIR
-from retriever import reset_vector_db, get_embeddings
+from retriever import reset_vector_db
 from utils.auto_ingest import rebuild_vector_database
 from utils.rag_chain import ask_question
 from utils.security import validate_pdf
@@ -20,17 +20,6 @@ app = FastAPI(
     version="1.0.0",
     description="Private document RAG backend",
 )
-
-
-# =========================================================
-# STARTUP
-# =========================================================
-
-@app.on_event("startup")
-def load_models():
-    print("Loading embedding model...")
-    get_embeddings()
-    print("Embedding model loaded successfully.")
 
 
 # =========================================================
@@ -80,7 +69,7 @@ def health():
     return {
         "status": "online",
         "service": "Secure RAG",
-        "llm": "Qwen 2.5 3B",
+        "llm": "Groq Qwen",
         "vector_store": "FAISS",
     }
 
@@ -99,10 +88,7 @@ async def upload_document(
             detail="No file was provided.",
         )
 
-    # -----------------------------------------------------
     # Read upload
-    # -----------------------------------------------------
-
     content = await file.read()
 
     if not content:
@@ -112,7 +98,7 @@ async def upload_document(
         )
 
     # -----------------------------------------------------
-    # Validate PDF + size + filename
+    # Validate PDF
     # -----------------------------------------------------
 
     class UploadedFileAdapter:
@@ -144,7 +130,6 @@ async def upload_document(
     # -----------------------------------------------------
 
     pdf_dir = Path(PDF_DIR)
-
     pdf_dir.mkdir(
         parents=True,
         exist_ok=True,
@@ -152,7 +137,6 @@ async def upload_document(
 
     # -----------------------------------------------------
     # Single-document mode
-    # Remove old PDFs
     # -----------------------------------------------------
 
     for old_pdf in pdf_dir.glob("*.pdf"):
@@ -162,10 +146,7 @@ async def upload_document(
         except OSError as exc:
             raise HTTPException(
                 status_code=500,
-                detail=(
-                    f"Could not remove old document: "
-                    f"{old_pdf.name}"
-                ),
+                detail=f"Could not remove old document: {old_pdf.name}",
             ) from exc
 
     # -----------------------------------------------------
@@ -184,13 +165,13 @@ async def upload_document(
         ) from exc
 
     # -----------------------------------------------------
-    # OCR/text extraction + chunking + FAISS
+    # Build FAISS database
     # -----------------------------------------------------
 
     try:
         total_chunks = rebuild_vector_database()
 
-        # Force retriever to load the fresh FAISS index.
+        # Force retriever to load the new FAISS database.
         reset_vector_db()
 
     except Exception as exc:
@@ -207,10 +188,6 @@ async def upload_document(
             status_code=500,
             detail=f"Document processing failed: {exc}",
         ) from exc
-
-    # -----------------------------------------------------
-    # Return metadata
-    # -----------------------------------------------------
 
     return {
         "success": True,
@@ -239,12 +216,13 @@ def chat(request: ChatRequest):
             raise ValueError("Question cannot be empty.")
 
         print("CHAT: Question received")
-
         print("CHAT: Calling ask_question...")
+
         answer, docs = ask_question(
             question,
             request.history,
         )
+
         print("CHAT: ask_question completed")
 
         sources = []
@@ -279,6 +257,7 @@ def chat(request: ChatRequest):
         print("CHAT ERROR:", repr(exc))
         print(error_traceback)
 
+        # TEMPORARY DEBUG RESPONSE
         return {
             "success": False,
             "error_type": type(exc).__name__,
