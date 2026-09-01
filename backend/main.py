@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from config import PDF_DIR
-from retriever import reset_vector_db
+from retriever import reset_vector_db, get_embeddings
 from utils.auto_ingest import rebuild_vector_database
 from utils.rag_chain import ask_question
 from utils.security import validate_pdf
@@ -20,6 +20,17 @@ app = FastAPI(
     version="1.0.0",
     description="Private document RAG backend",
 )
+
+
+# =========================================================
+# STARTUP
+# =========================================================
+
+@app.on_event("startup")
+def load_models():
+    print("Loading embedding model...")
+    get_embeddings()
+    print("Embedding model loaded successfully.")
 
 
 # =========================================================
@@ -120,9 +131,8 @@ async def upload_document(
     )
 
     try:
-        safe_filename = validate_pdf(
-            upload_adapter
-        )
+        safe_filename = validate_pdf(upload_adapter)
+
     except Exception as exc:
         raise HTTPException(
             status_code=400,
@@ -148,6 +158,7 @@ async def upload_document(
     for old_pdf in pdf_dir.glob("*.pdf"):
         try:
             old_pdf.unlink()
+
         except OSError as exc:
             raise HTTPException(
                 status_code=500,
@@ -165,6 +176,7 @@ async def upload_document(
 
     try:
         output_path.write_bytes(content)
+
     except OSError as exc:
         raise HTTPException(
             status_code=500,
@@ -187,6 +199,7 @@ async def upload_document(
         try:
             if output_path.exists():
                 output_path.unlink()
+
         except OSError:
             pass
 
@@ -196,7 +209,7 @@ async def upload_document(
         ) from exc
 
     # -----------------------------------------------------
-    # Return metadata to React
+    # Return metadata
     # -----------------------------------------------------
 
     return {
@@ -266,13 +279,8 @@ def chat(request: ChatRequest):
         }
 
     except Exception as exc:
-        import traceback
 
-        traceback.print_exc()
-
-        return {
-            "success": False,
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        ) from exc
