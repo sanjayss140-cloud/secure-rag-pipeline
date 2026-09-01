@@ -4,16 +4,20 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV TOKENIZERS_PARALLELISM=false
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tesseract-ocr \
+    && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-docker.txt .
 
-RUN pip install --no-cache-dir \
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cpu \
-    torch==2.13.0 \
+    torch==2.3.1 \
+    torchvision==0.18.1 \
     && pip install --no-cache-dir -r requirements-docker.txt
 
 COPY . .
