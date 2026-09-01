@@ -232,41 +232,34 @@ async def upload_document(
 @app.post("/api/chat")
 def chat(request: ChatRequest):
 
-    question = request.question.strip()
-
-    if not question:
-        raise HTTPException(
-            status_code=400,
-            detail="Question cannot be empty.",
-        )
-
     try:
+        question = request.question.strip()
 
+        if not question:
+            raise ValueError("Question cannot be empty.")
+
+        print("CHAT: Question received")
+
+        print("CHAT: Calling ask_question...")
         answer, docs = ask_question(
             question,
             request.history,
         )
+        print("CHAT: ask_question completed")
 
         sources = []
 
         for doc in docs:
-
             source = doc.metadata.get(
                 "source",
                 "Unknown document",
             )
 
-            page = doc.metadata.get(
-                "page",
-            )
+            page = doc.metadata.get("page")
 
             item = {
                 "file": Path(source).name,
-                "page": (
-                    page + 1
-                    if page is not None
-                    else None
-                ),
+                "page": page + 1 if page is not None else None,
             }
 
             if item not in sources:
@@ -279,8 +272,16 @@ def chat(request: ChatRequest):
         }
 
     except Exception as exc:
+        import traceback
 
-        raise HTTPException(
-            status_code=500,
-            detail=str(exc),
-        ) from exc
+        error_traceback = traceback.format_exc()
+
+        print("CHAT ERROR:", repr(exc))
+        print(error_traceback)
+
+        return {
+            "success": False,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": error_traceback,
+        }
