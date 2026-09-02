@@ -26,11 +26,19 @@ app = FastAPI(
 # CORS
 # =========================================================
 
+# =========================================================
+# CORS
+# =========================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+
         "http://localhost:5175",
         "http://127.0.0.1:5175",
     ],
@@ -38,7 +46,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # =========================================================
 # REQUEST MODELS
@@ -206,6 +213,10 @@ async def upload_document(
 # CHAT
 # =========================================================
 
+# =========================================================
+# CHAT
+# =========================================================
+
 @app.post("/api/chat")
 def chat(request: ChatRequest):
 
@@ -213,10 +224,16 @@ def chat(request: ChatRequest):
         question = request.question.strip()
 
         if not question:
-            raise ValueError("Question cannot be empty.")
+            raise HTTPException(
+                status_code=400,
+                detail="Question cannot be empty.",
+            )
 
+        print("\n" + "=" * 60)
         print("CHAT: Question received")
+        print("CHAT:", question)
         print("CHAT: Calling ask_question...")
+        print("=" * 60)
 
         answer, docs = ask_question(
             question,
@@ -224,6 +241,7 @@ def chat(request: ChatRequest):
         )
 
         print("CHAT: ask_question completed")
+        print("CHAT: Answer:", answer)
 
         sources = []
 
@@ -249,18 +267,20 @@ def chat(request: ChatRequest):
             "sources": sources,
         }
 
+    except HTTPException:
+        raise
+
     except Exception as exc:
         import traceback
 
         error_traceback = traceback.format_exc()
 
+        print("\n" + "!" * 60)
         print("CHAT ERROR:", repr(exc))
         print(error_traceback)
+        print("!" * 60 + "\n")
 
-        # TEMPORARY DEBUG RESPONSE
-        return {
-            "success": False,
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": error_traceback,
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat processing failed: {str(exc)}",
+        )
