@@ -31,14 +31,22 @@ def _get_user_id(current_user: Optional[User]) -> str:
     dependencies=[Depends(rate_limit_dependency(max_requests=10, window_seconds=60))],
 )
 async def upload_documents(
-    files: List[UploadFile] = File(...),
+    files: Optional[List[UploadFile]] = File(None),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Upload and index multiple PDF files in the private RAG knowledge base.
+    Supports both multi-file ('files') and single-file ('file') form field keys.
     """
-    if not files:
+    upload_list = []
+    if files:
+        upload_list.extend(files)
+    if file:
+        upload_list.append(file)
+
+    if not upload_list:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No files were provided for upload.",
@@ -49,18 +57,18 @@ async def upload_documents(
     failed_records = []
     total_chunks = 0
 
-    for file in files:
-        if not file.filename:
+    for file_item in upload_list:
+        if not file_item.filename:
             failed_records.append({"filename": "Unknown", "error": "Missing filename."})
             continue
 
         try:
-            content = await file.read()
+            content = await file_item.read()
             if not content:
-                failed_records.append({"filename": file.filename, "error": "Uploaded file is empty."})
+                failed_records.append({"filename": file_item.filename, "error": "Uploaded file is empty."})
                 continue
 
-            doc_rec = process_and_save_document(content, file.filename, user_id, db)
+            doc_rec = process_and_save_document(content, file_item.filename, user_id, db)
             total_chunks += doc_rec.chunk_count
 
             uploaded_records.append({
@@ -73,7 +81,7 @@ async def upload_documents(
             })
 
         except Exception as exc:
-            failed_records.append({"filename": file.filename, "error": str(exc)})
+            failed_records.append({"filename": file_item.filename, "error": str(exc)})
 
     if not uploaded_records:
         raise HTTPException(

@@ -29,11 +29,21 @@ export default function ChatArea({
   onSendMessage,
   isThinking,
   onOpenUpload,
+  onUploadFiles,
+  isUploading,
   docCount,
 }) {
   const [copiedId, setCopiedId] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const composerFileInputRef = useRef(null);
+
+  const handleComposerFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onUploadFiles?.(Array.from(e.target.files));
+    }
+    e.target.value = "";
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,15 +99,15 @@ export default function ChatArea({
               Every answer is evidence-grounded with precise page citations.
             </p>
 
-            {docCount === 0 && (
-              <button
-                onClick={onOpenUpload}
-                className="mt-5 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#A855F7]/15 hover:bg-[#A855F7]/25 text-[#C084FC] border border-[#C084FC]/30 text-xs font-semibold transition"
-              >
-                <Upload className="w-4 h-4" />
-                Upload Your First Document
-              </button>
-            )}
+            <button
+              onClick={onOpenUpload}
+              className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#A855F7] to-[#7C3AED] hover:from-[#B76AF8] hover:to-[#8B5CF6] text-white text-xs font-semibold shadow-[0_0_20px_rgba(168,85,247,0.35)] transition cursor-pointer active:scale-95"
+            >
+              <Upload className="w-4 h-4" />
+              {docCount === 0
+                ? "Upload Your First Document"
+                : `Manage & Upload Documents (${docCount})`}
+            </button>
 
             {/* Suggested Prompts */}
             <div className="mt-8 w-full space-y-2">
@@ -208,12 +218,22 @@ export default function ChatArea({
       {/* Composer Input Bar */}
       <div className="p-3 sm:p-4 border-t border-white/5 bg-[#0D1220]/90 backdrop-blur-xl">
         <div className="max-w-3xl mx-auto flex items-end gap-2 bg-[#131A2E] rounded-2xl border border-[#C084FC]/20 p-2 shadow-2xl focus-within:border-[#C084FC]/50 transition">
+          <input
+            ref={composerFileInputRef}
+            type="file"
+            multiple
+            accept=".pdf"
+            onChange={handleComposerFileChange}
+            className="hidden"
+          />
           <button
-            onClick={onOpenUpload}
-            title="Upload PDF document"
-            className="p-2.5 rounded-xl text-white/50 hover:text-[#C084FC] hover:bg-white/5 transition shrink-0"
+            type="button"
+            onClick={() => composerFileInputRef.current?.click()}
+            title="Upload PDF documents"
+            disabled={isUploading}
+            className="p-2.5 rounded-xl text-white/50 hover:text-[#C084FC] hover:bg-white/5 transition shrink-0 cursor-pointer disabled:opacity-40"
           >
-            <Upload className="w-5 h-5" />
+            <Upload className={`w-5 h-5 ${isUploading ? "animate-bounce text-[#C084FC]" : ""}`} />
           </button>
 
           <textarea

@@ -203,6 +203,7 @@ function SecureRagMain() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         onOpenAuth={() => setAuthModalOpen(true)}
+        onOpenUpload={() => setCurrentView("documents")}
         systemStatus={systemStatus}
         docCount={documents.length}
         onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
@@ -215,6 +216,8 @@ function SecureRagMain() {
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
           onDeleteConversation={handleDeleteConversation}
+          docCount={documents.length}
+          onOpenUpload={() => setCurrentView("documents")}
           isOpen={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
         />
@@ -228,6 +231,8 @@ function SecureRagMain() {
               onSendMessage={handleSendMessage}
               isThinking={isThinking}
               onOpenUpload={() => setCurrentView("documents")}
+              onUploadFiles={handleUploadFiles}
+              isUploading={isUploading}
               docCount={documents.length}
             />
           )}

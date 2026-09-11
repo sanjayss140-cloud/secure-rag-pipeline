@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Sparkles, LogOut, User as UserIcon, BarChart3, Files, MessageSquare, Menu } from "lucide-react";
+import { Shield, Sparkles, LogOut, User as UserIcon, BarChart3, Files, MessageSquare, Menu, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,6 +7,7 @@ export default function Navbar({
   currentView,
   setCurrentView,
   onOpenAuth,
+  onOpenUpload,
   systemStatus,
   docCount,
   onToggleMobileSidebar,
@@ -88,7 +89,18 @@ export default function Navbar({
       </nav>
 
       {/* User Actions & System Pill */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Prominent Upload Documents Button */}
+        <button
+          onClick={onOpenUpload}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#A855F7] to-[#7C3AED] hover:from-[#B76AF8] hover:to-[#8B5CF6] text-white text-xs font-semibold shadow-[0_0_20px_rgba(168,85,247,0.35)] transition shrink-0 active:scale-95"
+          title="Upload PDF documents to knowledge base"
+        >
+          <Upload className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden sm:inline">Upload Documents</span>
+          <span className="sm:hidden">Upload</span>
+        </button>
+
         {/* System Pill */}
         <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#131A2E] border border-white/5 text-[11px]">
           <span

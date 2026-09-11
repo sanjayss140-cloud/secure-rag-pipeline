@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, MessageSquare, Trash2, Shield, X, Sparkles } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Shield, X, Sparkles, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Sidebar({
@@ -8,6 +8,8 @@ export default function Sidebar({
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
+  docCount,
+  onOpenUpload,
   isOpen,
   onClose,
 }) {
@@ -46,17 +48,50 @@ export default function Sidebar({
         </div>
 
         {/* New Chat Button */}
-        <div className="p-4">
+        <div className="p-4 space-y-3">
           <button
             onClick={() => {
               onNewChat();
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-[#A855F7] to-[#8B5CF6] hover:from-[#B76AF8] hover:to-[#9333EA] text-white text-sm font-semibold shadow-[0_0_25px_rgba(168,85,247,0.25)] transition group"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#A855F7] to-[#8B5CF6] hover:from-[#B76AF8] hover:to-[#9333EA] text-white text-xs font-semibold shadow-[0_0_25px_rgba(168,85,247,0.25)] transition group"
           >
             <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
             <span>New Chat</span>
           </button>
+
+          {/* Dedicated Knowledge Base / Upload Section */}
+          <div className="pt-2">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">
+                Knowledge Base
+              </span>
+              <span className="rounded-full bg-[#A855F7]/15 px-2 py-0.5 text-[10px] font-bold text-[#C084FC] border border-[#C084FC]/20">
+                {docCount ? `${docCount} DOC${docCount > 1 ? "S" : ""}` : "EMPTY"}
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                onOpenUpload();
+                onClose();
+              }}
+              className="w-full rounded-xl border border-dashed border-[#C084FC]/30 bg-[#131A2E]/80 p-3 text-left transition hover:border-[#C084FC]/60 hover:bg-[#131A2E] group flex items-center gap-3 shadow-sm"
+              title="Upload PDF documents to knowledge base"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#A855F7]/20 text-[#C084FC] group-hover:scale-105 transition">
+                <Upload className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-white group-hover:text-[#C084FC] transition">
+                  Upload Documents
+                </p>
+                <p className="text-[10px] text-[#9CA3AF] truncate">
+                  Multi-PDF (up to 10 MB)
+                </p>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Conversation List */}
