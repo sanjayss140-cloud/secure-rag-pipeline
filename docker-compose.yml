@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: securerag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: securerag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: securerag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: securerag-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/securerag
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: your_super_secure_jwt_secret_32bytes_key_here!
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_MODEL: qwen/qwen3.8-27b
+    ports:
+      - "8000:8000"
+    volumes:
+      - pdf_data:/app/data/pdfs
+      - vector_data:/app/vector_store
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: securerag-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  pdf_data:
+  vector_data:

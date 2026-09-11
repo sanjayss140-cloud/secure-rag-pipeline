@@ -4,50 +4,44 @@ __pycache__/
 *.py[cod]
 *.pyd
 
-# Environment / secrets
+# Environment & Secrets (CRITICAL)
 .env
 .env.*
 !.env.example
 
-# Local data
+# Local SQLite & Databases
+*.db
+*.sqlite3
+securerag.db
+
+# Local storage & data
 data/pdfs/*
 data/vector_store/*
 data/uploads/*
+vector_store/*
 
-# Logs / temporary files
+# Logs & temporary files
 *.log
 *.tmp
 *.cache
 
-# Streamlit
-.streamlit/secrets.toml
-
-# Testing / coverage
+# Testing
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Node
+# Node & Frontend
 frontend/node_modules/
 frontend/dist/
 
-# Editor
+# Editors & OS
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Local caches
-__pycache__/
-.cache/
-# Root FAISS vector store
-vector_store/
-
-# Local AI/editor tooling
+# AI tooling
 .agents/
 .claude/
 .windsurf/
-
 .git-old-threadbase/
