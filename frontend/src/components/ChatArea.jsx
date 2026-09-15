@@ -22,6 +22,98 @@ function ThinkingOrb() {
   );
 }
 
+function formatInline(str) {
+  if (!str) return str;
+  const parts = [];
+  const regex = /(\*\*.*?\*\*|`.*?`)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(str)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(str.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith("**") && token.endsWith("**")) {
+      parts.push(
+        <strong key={match.index} className="font-semibold text-white">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      parts.push(
+        <code key={match.index} className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs text-[#C084FC]">
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < str.length) {
+    parts.push(str.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : str;
+}
+
+function renderFormattedContent(text) {
+  if (!text) return null;
+  const lines = text.split("\n");
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <div key={idx} className="h-1" />;
+        }
+
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h3 key={idx} className="text-sm font-bold text-[#C084FC] pt-1 pb-0.5 flex items-center gap-1.5">
+              {trimmed.replace(/^###\s+/, "")}
+            </h3>
+          );
+        }
+
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h2 key={idx} className="text-base font-bold text-white pt-1 pb-0.5">
+              {trimmed.replace(/^##\s+/, "")}
+            </h2>
+          );
+        }
+
+        if (trimmed.startsWith("> ")) {
+          return (
+            <blockquote
+              key={idx}
+              className="border-l-2 border-[#C084FC]/70 pl-3 py-1 my-1 bg-white/[0.03] rounded-r-lg text-white/80 italic text-xs leading-relaxed"
+            >
+              {formatInline(trimmed.replace(/^>\s+/, ""))}
+            </blockquote>
+          );
+        }
+
+        if (trimmed.startsWith("• ") || trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1 text-sm text-white/90">
+              <span className="text-[#C084FC] font-bold mt-1 text-xs">•</span>
+              <span className="flex-1">{formatInline(trimmed.replace(/^[•\-\*]\s+/, ""))}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="text-sm leading-relaxed text-white/90">
+            {formatInline(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ChatArea({
   messages,
   input,
@@ -177,9 +269,11 @@ export default function ChatArea({
                       : "bg-[#131A2E] text-white/95 border border-white/5 shadow-lg rounded-tl-sm"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-
-                  {/* Sources Pill Breakdown */}
+                  {isUser ? (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  ) : (
+                    renderFormattedContent(msg.content)
+                  )}
                   {!isUser && msg.sources && msg.sources.length > 0 && (
                     <div className="mt-3.5 pt-3 border-t border-white/5">
                       <div className="flex items-center justify-between mb-2">
