@@ -1,0 +1,10 @@
+{
+  "name": "secure-rag-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SecureRAG \u2014 Private Multi-Document AI Knowledge Assistant",
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "start": "npm --prefix frontend run preview"
+  }
+}

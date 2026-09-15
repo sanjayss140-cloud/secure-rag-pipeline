@@ -8,6 +8,7 @@ export default function DocumentDrawer({
   onDeleteDocument,
   isUploading,
   uploadStatus,
+  onClose,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
@@ -40,21 +41,44 @@ export default function DocumentDrawer({
     <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/5">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Knowledge Base Documents</h2>
-          <p className="text-xs text-[#9CA3AF] mt-1">
-            Upload, manage, and index PDF documents. Chunks are automatically embedded into your private FAISS store.
-          </p>
+        <div className="flex items-start justify-between sm:block">
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight">Knowledge Base Documents</h2>
+            <p className="text-xs text-[#9CA3AF] mt-1">
+              Upload, manage, and index PDF documents. Chunks are automatically embedded into your private FAISS store.
+            </p>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="sm:hidden p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition"
+              aria-label="Close drawer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#A855F7] hover:bg-[#B76AF8] text-white text-xs font-semibold shadow-[0_0_20px_rgba(168,85,247,0.3)] transition disabled:opacity-50 shrink-0"
-        >
-          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          <span>Upload PDFs</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#A855F7] hover:bg-[#B76AF8] text-white text-xs font-semibold shadow-[0_0_20px_rgba(168,85,247,0.3)] transition disabled:opacity-50 shrink-0 cursor-pointer"
+          >
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            <span>Upload PDFs</span>
+          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-medium transition cursor-pointer"
+              title="Close drawer"
+            >
+              <X className="w-4 h-4" />
+              <span>Close</span>
+            </button>
+          )}
+        </div>
         <input
           ref={fileInputRef}
           type="file"

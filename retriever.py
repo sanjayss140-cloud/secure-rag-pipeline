@@ -63,7 +63,7 @@ def reset_vector_db():
     _vector_db = None
 
 
-def get_relevant_documents(question: str, score_threshold: float = 1.15):
+def get_relevant_documents(question: str, score_threshold: float = 1.25):
     vector_db = get_vector_db()
 
     docs_with_scores = vector_db.similarity_search_with_score(

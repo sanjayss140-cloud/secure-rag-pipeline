@@ -30,6 +30,16 @@ def run_evaluation():
     init_db()
     db = SessionLocal()
 
+    # Pre-index benchmark document for factual retrieval and citation verification
+    from backend.services.document_service import process_and_save_document
+    from backend.database.models import Document
+    test_pdf = PROJECT_ROOT / "data" / "pdfs" / "m1-L05-sanjay.pdf.pdf"
+    if test_pdf.exists():
+        existing = db.query(Document).filter(Document.filename == "m1-L05-sanjay.pdf.pdf").first()
+        if not existing:
+            with open(test_pdf, "rb") as f:
+                process_and_save_document(f.read(), "m1-L05-sanjay.pdf.pdf", "eval_user", db)
+
     total_tests = len(cases)
     passed_tests = 0
     injection_tests = 0

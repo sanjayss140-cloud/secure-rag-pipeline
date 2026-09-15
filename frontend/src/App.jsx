@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
@@ -20,6 +21,7 @@ import {
 
 function SecureRagMain() {
   const [currentView, setCurrentView] = useState("chat");
+  const [isDocumentDrawerOpen, setIsDocumentDrawerOpen] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -203,7 +205,7 @@ function SecureRagMain() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         onOpenAuth={() => setAuthModalOpen(true)}
-        onOpenUpload={() => setCurrentView("documents")}
+        onOpenUpload={() => setIsDocumentDrawerOpen(true)}
         systemStatus={systemStatus}
         docCount={documents.length}
         onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
@@ -217,7 +219,7 @@ function SecureRagMain() {
           onNewChat={handleNewChat}
           onDeleteConversation={handleDeleteConversation}
           docCount={documents.length}
-          onOpenUpload={() => setCurrentView("documents")}
+          onOpenUpload={() => setIsDocumentDrawerOpen(true)}
           isOpen={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
         />
@@ -230,7 +232,7 @@ function SecureRagMain() {
               setInput={setInput}
               onSendMessage={handleSendMessage}
               isThinking={isThinking}
-              onOpenUpload={() => setCurrentView("documents")}
+              onOpenUpload={() => setIsDocumentDrawerOpen(true)}
               onUploadFiles={handleUploadFiles}
               isUploading={isUploading}
               docCount={documents.length}
@@ -250,6 +252,37 @@ function SecureRagMain() {
           {currentView === "admin" && <AdminDashboard />}
         </main>
       </div>
+
+      {/* Slide-out Document Drawer Overlay */}
+      <AnimatePresence>
+        {isDocumentDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDocumentDrawerOpen(false)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 220 }}
+              className="relative z-10 w-full max-w-2xl h-full bg-[#0D1220] border-l border-white/10 shadow-2xl flex flex-col overflow-hidden"
+            >
+              <DocumentDrawer
+                documents={documents}
+                onUploadFiles={handleUploadFiles}
+                onDeleteDocument={handleDeleteDocument}
+                isUploading={isUploading}
+                uploadStatus={uploadStatus}
+                onClose={() => setIsDocumentDrawerOpen(false)}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AuthModal
         isOpen={authModalOpen}

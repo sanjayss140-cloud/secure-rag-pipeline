@@ -83,6 +83,34 @@ export default function ChatArea({
         <div className="absolute -right-32 top-1/4 h-96 w-96 rounded-full bg-[#C084FC]/5 blur-[120px]" />
       </div>
 
+      {/* Knowledge Base Header Bar */}
+      <div className="h-12 border-b border-white/5 bg-[#0D1220]/70 px-4 md:px-6 flex items-center justify-between shrink-0 backdrop-blur-md z-10">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+            <FileText className="w-4 h-4 text-[#C084FC]" />
+            <span className="hidden sm:inline">Active Knowledge Base:</span>
+            <span className="font-semibold text-white">
+              {docCount === 0 ? "No documents uploaded" : `${docCount} document${docCount > 1 ? "s" : ""} indexed`}
+            </span>
+          </div>
+          {isUploading && (
+            <span className="flex items-center gap-1.5 text-[11px] text-[#C084FC] animate-pulse bg-[#A855F7]/15 px-2.5 py-0.5 rounded-full border border-[#C084FC]/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C084FC] animate-ping" />
+              Indexing PDFs...
+            </span>
+          )}
+        </div>
+
+        <button
+          onClick={onOpenUpload}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#A855F7]/20 to-[#7C3AED]/20 hover:from-[#A855F7]/30 hover:to-[#7C3AED]/30 text-[#C084FC] hover:text-white border border-[#C084FC]/30 text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer"
+          title="Open Document Manager / Upload PDFs"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          <span>Upload Documents</span>
+        </button>
+      </div>
+
       {/* Messages Scroll View */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scrollbar-thin">
         {messages.length === 0 ? (
