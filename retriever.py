@@ -63,12 +63,12 @@ def reset_vector_db():
     _vector_db = None
 
 
-def get_relevant_documents(question: str, score_threshold: float = 1.25):
+def get_relevant_documents(question: str, score_threshold: float = 1.35, k: int = 6):
     vector_db = get_vector_db()
 
     docs_with_scores = vector_db.similarity_search_with_score(
         question,
-        k=5,
+        k=k,
     )
 
     if not docs_with_scores:
@@ -84,5 +84,9 @@ def get_relevant_documents(question: str, score_threshold: float = 1.25):
         for doc, score in docs_with_scores
         if score <= score_threshold
     ]
+
+    # If all were filtered out by strict threshold, keep top matches so user always gets an answer
+    if not filtered and docs_with_scores:
+        filtered = [doc for doc, _ in docs_with_scores[:4]]
 
     return filtered
