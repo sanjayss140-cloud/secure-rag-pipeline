@@ -1,4 +1,21 @@
+import os
+import gc
 from pathlib import Path
+
+# Restrict thread pools to single-threaded CPU mode to conserve RAM within 512MB
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+import torch
+torch.set_num_threads(1)
+try:
+    torch.set_grad_enabled(False)
+except Exception:
+    pass
 
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -14,7 +31,8 @@ def get_embeddings():
     global _embeddings
 
     if _embeddings is None:
-        print("Loading embedding model...")
+        print("Loading embedding model in low-memory inference mode...")
+        gc.collect()
 
         _embeddings = HuggingFaceEmbeddings(
             model_name=EMBEDDING_MODEL,
@@ -23,9 +41,10 @@ def get_embeddings():
             },
             encode_kwargs={
                 "normalize_embeddings": True,
+                "batch_size": 8,
             },
         )
-
+        gc.collect()
         print("Embedding model loaded successfully.")
 
     return _embeddings

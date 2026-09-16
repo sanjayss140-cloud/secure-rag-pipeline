@@ -308,6 +308,8 @@ def process_and_save_document(
             vector_db.save_local(str(VECTOR_STORE_DIR))
 
         reset_vector_db()
+        import gc
+        gc.collect()
         return db_doc
 
     except Exception as exc:
