@@ -1,8 +1,23 @@
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
-    ? "https://secure-rag-pipeline.onrender.com"
-    : "http://127.0.0.1:8000");
+export function getApiBase() {
+  if (typeof window !== "undefined") {
+    // If running in Vite dev mode on localhost with non-backend port, route to local FastAPI
+    if (
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
+      window.location.port &&
+      window.location.port !== "8000"
+    ) {
+      return "http://127.0.0.1:8000";
+    }
+    // On production (Render / any cloud host) or when served by backend, use same-origin relative URLs
+    return "";
+  }
+  return "";
+}
+
+function endpoint(path) {
+  const base = getApiBase();
+  return base ? `${base}${path}` : path;
+}
 
 function getAuthHeaders() {
   const token = localStorage.getItem("securerag_token");
@@ -16,19 +31,19 @@ function getAuthHeaders() {
 }
 
 export async function checkHealth() {
-  const res = await fetch(`${API_BASE}/api/health`);
+  const res = await fetch(endpoint("/api/health"));
   if (!res.ok) throw new Error("Health check failed");
   return res.json();
 }
 
 export async function checkDetailedHealth() {
-  const res = await fetch(`${API_BASE}/api/health/detailed`);
+  const res = await fetch(endpoint("/api/health/detailed"));
   if (!res.ok) throw new Error("Detailed health check failed");
   return res.json();
 }
 
 export async function apiRegister(email, username, password) {
-  const res = await fetch(`${API_BASE}/api/auth/register`, {
+  const res = await fetch(endpoint("/api/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, username, password }),
@@ -41,7 +56,7 @@ export async function apiRegister(email, username, password) {
 }
 
 export async function apiLogin(username_or_email, password) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+  const res = await fetch(endpoint("/api/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username_or_email, password }),
@@ -54,7 +69,7 @@ export async function apiLogin(username_or_email, password) {
 }
 
 export async function apiGetMe() {
-  const res = await fetch(`${API_BASE}/api/auth/me`, {
+  const res = await fetch(endpoint("/api/auth/me"), {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Session invalid");
@@ -73,7 +88,7 @@ export async function apiUploadDocuments(files) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}/api/documents/upload`, {
+  const res = await fetch(endpoint("/api/documents/upload"), {
     method: "POST",
     headers,
     body: formData,
@@ -88,7 +103,7 @@ export async function apiUploadDocuments(files) {
 }
 
 export async function apiListDocuments() {
-  const res = await fetch(`${API_BASE}/api/documents`, {
+  const res = await fetch(endpoint("/api/documents"), {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Could not fetch documents");
@@ -96,7 +111,7 @@ export async function apiListDocuments() {
 }
 
 export async function apiDeleteDocument(documentId) {
-  const res = await fetch(`${API_BASE}/api/documents/${documentId}`, {
+  const res = await fetch(endpoint(`/api/documents/${documentId}`), {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
@@ -108,7 +123,7 @@ export async function apiDeleteDocument(documentId) {
 }
 
 export async function apiSendMessage(question, conversationId = null) {
-  const res = await fetch(`${API_BASE}/api/chat`, {
+  const res = await fetch(endpoint("/api/chat"), {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
@@ -128,7 +143,7 @@ export async function apiSendMessage(question, conversationId = null) {
 }
 
 export async function apiListConversations() {
-  const res = await fetch(`${API_BASE}/api/conversations`, {
+  const res = await fetch(endpoint("/api/conversations"), {
     headers: getAuthHeaders(),
   });
   if (!res.ok) return { conversations: [] };
@@ -136,7 +151,7 @@ export async function apiListConversations() {
 }
 
 export async function apiGetConversation(conversationId) {
-  const res = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+  const res = await fetch(endpoint(`/api/conversations/${conversationId}`), {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Could not load conversation");
@@ -144,7 +159,7 @@ export async function apiGetConversation(conversationId) {
 }
 
 export async function apiDeleteConversation(conversationId) {
-  const res = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+  const res = await fetch(endpoint(`/api/conversations/${conversationId}`), {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
@@ -153,7 +168,7 @@ export async function apiDeleteConversation(conversationId) {
 }
 
 export async function apiGetAdminStats() {
-  const res = await fetch(`${API_BASE}/api/admin/stats`, {
+  const res = await fetch(endpoint("/api/admin/stats"), {
     headers: getAuthHeaders(),
   });
   const data = await res.json();
@@ -166,5 +181,5 @@ export async function apiGetAdminStats() {
 export function getStreamUrl(question, conversationId = null) {
   const params = new URLSearchParams({ question });
   if (conversationId) params.append("conversation_id", conversationId);
-  return `${API_BASE}/api/chat/stream?${params.toString()}`;
+  return `${endpoint("/api/chat/stream")}?${params.toString()}`;
 }
