@@ -1,8 +1,8 @@
 services:
   # FastAPI Backend Web Service
   - type: web
-    name: securerag-backend
-    env: python
+    name: mayandi
+    env: docker
     region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
