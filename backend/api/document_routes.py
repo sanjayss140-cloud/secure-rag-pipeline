@@ -22,13 +22,13 @@ def _get_user_id(current_user: Optional[User]) -> str:
     "/api/documents/upload",
     status_code=status.HTTP_201_CREATED,
     summary="Upload multiple PDF documents to private knowledge base",
-    dependencies=[Depends(rate_limit_dependency(max_requests=10, window_seconds=60))],
+    dependencies=[Depends(rate_limit_dependency(max_requests=60, window_seconds=60))],
 )
 @router.post(
     "/api/upload",
     status_code=status.HTTP_201_CREATED,
     summary="Upload PDF files (backward compatible endpoint)",
-    dependencies=[Depends(rate_limit_dependency(max_requests=10, window_seconds=60))],
+    dependencies=[Depends(rate_limit_dependency(max_requests=60, window_seconds=60))],
 )
 async def upload_documents(
     files: Optional[List[UploadFile]] = File(None),

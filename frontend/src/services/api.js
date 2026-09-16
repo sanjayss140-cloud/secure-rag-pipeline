@@ -76,7 +76,7 @@ export async function apiGetMe() {
   return res.json();
 }
 
-export async function apiUploadDocuments(files) {
+export async function apiUploadDocuments(files, retries = 2) {
   const formData = new FormData();
   for (const file of files) {
     formData.append("files", file);
@@ -88,18 +88,42 @@ export async function apiUploadDocuments(files) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(endpoint("/api/documents/upload"), {
-    method: "POST",
-    headers,
-    body: formData,
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(endpoint("/api/documents/upload"), {
+        method: "POST",
+        headers,
+        body: formData,
+      });
 
-  const data = await res.json();
-  if (!res.ok) {
-    const errorMsg = data.detail?.message || data.detail || "Upload failed";
-    throw new Error(errorMsg);
+      let data = null;
+      const rawText = await res.text();
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+          continue;
+        }
+        throw new Error("Server temporarily busy. Please wait a moment and try again.");
+      }
+
+      if (!res.ok) {
+        if (res.status >= 500 && attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+          continue;
+        }
+        const errorMsg = data?.detail?.message || data?.detail || "Upload failed";
+        throw new Error(errorMsg);
+      }
+      return data;
+    } catch (err) {
+      if (attempt === retries) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+    }
   }
-  return data;
 }
 
 export async function apiListDocuments() {
@@ -132,12 +156,21 @@ export async function apiSendMessage(question, conversationId = null) {
     }),
   });
 
-  const data = await res.json();
+  let data = null;
+  const rawText = await res.text();
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    if (!res.ok) {
+      throw new Error(`Chat server momentarily busy (Status ${res.status}). Please retry in a few seconds.`);
+    }
+  }
+
   if (!res.ok) {
     if (res.status === 429) {
       throw new Error("Rate limit reached. Please wait a few seconds before asking again.");
     }
-    throw new Error(data.detail?.message || data.detail || "Chat request failed");
+    throw new Error(data?.detail?.message || data?.detail || "Chat request failed");
   }
   return data;
 }
