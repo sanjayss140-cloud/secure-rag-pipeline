@@ -78,8 +78,17 @@ def get_vector_db():
 
 def reset_vector_db():
     global _vector_db
-
     _vector_db = None
+    import gc
+    gc.collect()
+
+
+def reset_embeddings():
+    global _embeddings, _vector_db
+    _vector_db = None
+    _embeddings = None
+    import gc
+    gc.collect()
 
 
 def get_relevant_documents(question: str, score_threshold: float = 1.35, k: int = 6):

@@ -307,15 +307,16 @@ def process_and_save_document(
             vector_db = FAISS.from_documents(chunks, embeddings)
             vector_db.save_local(str(VECTOR_STORE_DIR))
 
-        reset_vector_db()
-        import gc
-        gc.collect()
+        from retriever import reset_embeddings
+        reset_embeddings()
         return db_doc
 
     except Exception as exc:
         db.rollback()
         if disk_path.exists():
             disk_path.unlink()
+        from retriever import reset_embeddings
+        reset_embeddings()
         logger.error("Failed to process document %s: %s", original_filename, str(exc), exc_info=True)
         raise exc
 

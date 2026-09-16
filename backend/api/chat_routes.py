@@ -53,6 +53,13 @@ def chat(
     user_id = _get_user_id(current_user)
     result = process_chat_message(db, user_id, question, request.conversation_id)
 
+    # Free embeddings memory to keep RAM < 150MB on Render
+    try:
+        from retriever import reset_embeddings
+        reset_embeddings()
+    except Exception:
+        pass
+
     return {
         "success": True,
         "conversation_id": result["conversation_id"],
