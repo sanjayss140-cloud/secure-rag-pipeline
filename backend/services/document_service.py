@@ -3,7 +3,14 @@ import uuid
 import logging
 from pathlib import Path
 from typing import List, Dict, Any
-import pymupdf as fitz
+import io
+try:
+    import fitz
+except Exception:
+    try:
+        import pymupdf as fitz
+    except Exception:
+        fitz = None
 from sqlalchemy.orm import Session
 
 from langchain_core.documents import Document as LCDocument
@@ -35,28 +42,52 @@ def extract_pdf_chunks(
     user_id: str,
     filename: str,
 ) -> Tuple[List[LCDocument], int]:
-    """Extract text from PDF pages using PyMuPDF and split into chunks with metadata."""
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    page_count = len(doc)
+    """Extract text from PDF pages using PyMuPDF or pypdf and split into chunks with metadata."""
     extracted_docs = []
+    page_count = 0
 
-    for page_num in range(page_count):
-        page = doc[page_num]
-        text = page.get_text("text").strip()
-        if text:
-            extracted_docs.append(
-                LCDocument(
-                    page_content=text,
-                    metadata={
-                        "user_id": user_id,
-                        "document_id": document_id,
-                        "filename": filename,
-                        "page": page_num,
-                    },
+    if fitz is not None:
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            page_count = len(doc)
+            for page_num in range(page_count):
+                page = doc[page_num]
+                text = page.get_text("text").strip()
+                if text:
+                    extracted_docs.append(
+                        LCDocument(
+                            page_content=text,
+                            metadata={
+                                "user_id": user_id,
+                                "document_id": document_id,
+                                "filename": filename,
+                                "page": page_num,
+                            },
+                        )
+                    )
+            doc.close()
+        except Exception as e:
+            logger.warning("fitz extraction failed (%s), trying pypdf fallback", str(e))
+            extracted_docs = []
+
+    if not extracted_docs:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        page_count = len(reader.pages)
+        for page_num, page in enumerate(reader.pages):
+            text = (page.extract_text() or "").strip()
+            if text:
+                extracted_docs.append(
+                    LCDocument(
+                        page_content=text,
+                        metadata={
+                            "user_id": user_id,
+                            "document_id": document_id,
+                            "filename": filename,
+                            "page": page_num,
+                        },
+                    )
                 )
-            )
-
-    doc.close()
 
     if not extracted_docs:
         raise ValueError("No readable text could be extracted from the PDF.")

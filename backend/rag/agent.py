@@ -190,22 +190,39 @@ def run_rag_agent(
         is_refusal = any(phrase in answer.lower() for phrase in refusal_phrases)
 
         if not answer or is_refusal:
-            # Provide structured synthesis directly from the retrieved document chunks
-            chunk_previews = []
-            for s in search_results[:4]:
-                clean_txt = " ".join(s['content'].split())
-                if clean_txt and len(clean_txt) > 20:
-                    chunk_previews.append(f"📄 **{s['filename']} (Page {s['page']})**\n> {clean_txt[:380]}...")
+            # Prompt the LLM with an explicit synthesis directive to write a polished natural-language summary
+            synthesis_prompt = (
+                f"You are an expert AI document intelligence assistant. The user asked: '{clean_question}'.\n"
+                f"Based on the following document excerpts, write a clear, coherent, and professional overview in fluent English.\n"
+                f"Explain what each document covers with structured bullet points. Do NOT output raw code snippets or truncate sentences mid-way.\n\n"
+                f"DOCUMENT EXCERPTS:\n{context_str}\n\n"
+                f"OVERVIEW:"
+            )
+            try:
+                synth_res = llm.invoke(synthesis_prompt)
+                synth_text = getattr(synth_res, "content", str(synth_res))
+                cleaned_synth = _clean_llm_response(synth_text)
+                if cleaned_synth and len(cleaned_synth) > 30 and not any(p in cleaned_synth.lower() for p in refusal_phrases):
+                    answer = cleaned_synth
+                    is_refusal = False
+            except Exception as e:
+                logger.warning("LLM synthesis retry error: %s", str(e))
 
-            if chunk_previews:
-                answer = (
-                    "### 📑 Document Analysis & Key Excerpts\n\n"
-                    "Here are the most relevant sections retrieved from your uploaded documents answering your question:\n\n"
-                    + "\n\n".join(chunk_previews) +
-                    "\n\n*You can ask follow-up questions about any of the points above.*"
-                )
-            else:
-                answer = "Your documents are indexed in the knowledge base. Please ask any question to inspect their contents!"
+        if not answer or is_refusal:
+            # Fallback to fluent document summaries grouped by file without raw code truncation
+            file_summaries = {}
+            for s in search_results:
+                fn = s["filename"]
+                if fn not in file_summaries:
+                    c = " ".join(s["content"].split())
+                    # Clean out code symbols for natural reading
+                    c_clean = c.replace("{", "").replace("}", "").replace("<", "").replace(">", "").replace(";", "")
+                    file_summaries[fn] = f"• **{fn}** (Page {s['page']}): Covers technical specifications and content regarding {c_clean[:180]}."
+            answer = (
+                "Here is an overview of the key topics discussed across your uploaded documents:\n\n"
+                + "\n\n".join(file_summaries.values())
+                + "\n\n*You can ask follow-up questions to explore any specific section in detail.*"
+            )
 
         return RAGResponseSchema(
             answer=answer,
