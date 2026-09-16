@@ -4,7 +4,6 @@ __pycache__
 .git
 .gitignore
 frontend/node_modules
-frontend/dist
 data/pdfs
 data/vector_store
 .streamlit

@@ -1,7 +1,10 @@
+import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from backend.database.session import init_db
 from backend.middleware.logging import StructuredLoggingMiddleware
@@ -67,14 +70,32 @@ app.include_router(chat_router)
 app.include_router(admin_router)
 
 
-@app.get("/", tags=["Root"])
-def root():
-    return {
-        "message": "SecureRAG API is operational.",
-        "version": "2.0.0",
-        "docs_url": "/docs",
-        "health_url": "/api/health",
-    }
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
+
+if os.path.isdir(frontend_dist):
+    logger.info("Mounting frontend SPA from %s", frontend_dist)
+    assets_path = os.path.join(frontend_dist, "assets")
+    if os.path.isdir(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not Found")
+        file_path = os.path.join(frontend_dist, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+else:
+    @app.get("/", tags=["Root"])
+    def root():
+        return {
+            "message": "SecureRAG API is operational.",
+            "version": "2.0.0",
+            "docs_url": "/docs",
+            "health_url": "/api/health",
+        }
 
 
 if __name__ == "__main__":
