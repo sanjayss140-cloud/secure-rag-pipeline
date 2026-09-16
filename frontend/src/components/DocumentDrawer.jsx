@@ -43,9 +43,9 @@ export default function DocumentDrawer({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/5">
         <div className="flex items-start justify-between sm:block">
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Knowledge Base Documents</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">Knowledge Base Documents & Files</h2>
             <p className="text-xs text-[#9CA3AF] mt-1">
-              Upload, manage, and index PDF documents. Chunks are automatically embedded into your private FAISS store.
+              Upload, manage, and index PDFs, Word docs, text files, code, and images. Content and OCR text are automatically embedded into your private FAISS store.
             </p>
           </div>
           {onClose && (
@@ -66,7 +66,7 @@ export default function DocumentDrawer({
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#A855F7] hover:bg-[#B76AF8] text-white text-xs font-semibold shadow-[0_0_20px_rgba(168,85,247,0.3)] transition disabled:opacity-50 shrink-0 cursor-pointer"
           >
             {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            <span>Upload PDFs</span>
+            <span>Upload Files</span>
           </button>
           {onClose && (
             <button
@@ -82,7 +82,7 @@ export default function DocumentDrawer({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.docx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.py,.js,.html,.css,.sql,.log"
           multiple
           onChange={handleFileChange}
           className="hidden"
@@ -111,10 +111,10 @@ export default function DocumentDrawer({
           </div>
           <div>
             <p className="text-sm font-semibold text-white">
-              {isUploading ? "Processing & chunking documents..." : "Click or drag & drop PDFs here"}
+              {isUploading ? "Extracting, embedding & indexing files..." : "Click or drag & drop files here"}
             </p>
             <p className="text-xs text-[#9CA3AF] mt-1">
-              Supports multiple PDF documents up to 10 MB each.
+              Supports PDFs, Word (.docx), Text/MD, Code, CSV/JSON, & Images (OCR) up to 10 MB each.
             </p>
           </div>
         </div>

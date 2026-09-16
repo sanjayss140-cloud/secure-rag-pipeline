@@ -107,18 +107,140 @@ def extract_pdf_chunks(
     return usable_chunks, page_count
 
 
+SUPPORTED_EXTENSIONS = {
+    # Documents
+    ".pdf", ".docx", ".txt", ".md", ".rtf",
+    # Structured Data & Config
+    ".csv", ".tsv", ".json", ".xml", ".yaml", ".yml", ".sql", ".log",
+    # Code & Scripts
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".java", ".c", ".cpp", ".go", ".rs", ".sh",
+    # Images (OCR Text Extraction)
+    ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff",
+}
+
+
+def extract_docx_chunks(
+    docx_bytes: bytes,
+    document_id: str,
+    user_id: str,
+    filename: str,
+) -> Tuple[List[LCDocument], int]:
+    """Extract paragraphs from Word (.docx) document and split into chunks."""
+    import zipfile
+    import xml.etree.ElementTree as ET
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(docx_bytes)) as z:
+            xml_content = z.read("word/document.xml")
+            tree = ET.fromstring(xml_content)
+            namespaces = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+            paragraphs = []
+            for p in tree.findall(".//w:p", namespaces):
+                texts = [node.text for node in p.findall(".//w:t", namespaces) if node.text]
+                if texts:
+                    paragraphs.append("".join(texts))
+            full_text = "\n\n".join(paragraphs).strip()
+    except Exception as e:
+        raise ValueError(f"Failed to extract text from DOCX file: {e}")
+
+    if not full_text:
+        raise ValueError("No readable text found in DOCX file.")
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    docs = [
+        LCDocument(
+            page_content=full_text,
+            metadata={"user_id": user_id, "document_id": document_id, "filename": filename, "page": 0},
+        )
+    ]
+    chunks = splitter.split_documents(docs)
+    for idx, c in enumerate(chunks):
+        c.metadata["chunk_id"] = f"{document_id}_{idx}"
+    return chunks, 1
+
+
+def extract_image_chunks(
+    image_bytes: bytes,
+    document_id: str,
+    user_id: str,
+    filename: str,
+) -> Tuple[List[LCDocument], int]:
+    """Extract visible text from image using Tesseract OCR and split into chunks."""
+    try:
+        from PIL import Image
+        import pytesseract
+
+        image = Image.open(io.BytesIO(image_bytes))
+        ocr_text = pytesseract.image_to_string(image).strip()
+    except Exception as e:
+        logger.warning("OCR processing warning on image %s: %s", filename, str(e))
+        ocr_text = ""
+
+    if not ocr_text:
+        ocr_text = f"Uploaded image: {filename}. (No distinct printed text detected via OCR)."
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    docs = [
+        LCDocument(
+            page_content=ocr_text,
+            metadata={"user_id": user_id, "document_id": document_id, "filename": filename, "page": 0},
+        )
+    ]
+    chunks = splitter.split_documents(docs)
+    for idx, c in enumerate(chunks):
+        c.metadata["chunk_id"] = f"{document_id}_{idx}"
+    return chunks, 1
+
+
+def extract_plain_text_chunks(
+    text_bytes: bytes,
+    document_id: str,
+    user_id: str,
+    filename: str,
+) -> Tuple[List[LCDocument], int]:
+    """Decode text, code, markdown, csv, or data files and split into chunks."""
+    text = ""
+    for enc in ["utf-8", "latin-1", "utf-16", "cp1252"]:
+        try:
+            text = text_bytes.decode(enc).strip()
+            break
+        except Exception:
+            continue
+
+    if not text:
+        text = text_bytes.decode("utf-8", errors="ignore").strip()
+
+    if not text:
+        raise ValueError("File is empty or contains no readable characters.")
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    docs = [
+        LCDocument(
+            page_content=text,
+            metadata={"user_id": user_id, "document_id": document_id, "filename": filename, "page": 0},
+        )
+    ]
+    chunks = splitter.split_documents(docs)
+    for idx, c in enumerate(chunks):
+        c.metadata["chunk_id"] = f"{document_id}_{idx}"
+    return chunks, 1
+
+
 def process_and_save_document(
     file_bytes: bytes,
     original_filename: str,
     user_id: str,
     db: Session,
 ) -> DBDocument:
-    """Process uploaded PDF, save to disk, record in DB, and update FAISS index."""
+    """Process uploaded document (PDF, Word, Text, Code, Image), save to disk, record in DB, and update FAISS index."""
     if len(file_bytes) > MAX_FILE_SIZE_BYTES:
         raise ValueError("File exceeds maximum allowed size (10 MB).")
 
-    if not original_filename.lower().endswith(".pdf"):
-        raise ValueError("Only PDF documents are supported.")
+    ext = Path(original_filename).suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise ValueError(
+            f"Unsupported file type '{ext}'. Supported: PDF (.pdf), Word (.docx), Text/Markdown (.txt, .md), Code (.py, .js, .html), Data (.csv, .json), and Images (.png, .jpg, .webp)."
+        )
 
     stored_name = get_unique_stored_filename(original_filename)
     document_id = str(uuid.uuid4())
@@ -132,8 +254,15 @@ def process_and_save_document(
     size_mb = round(size_bytes / (1024 * 1024), 2)
 
     try:
-        # Extract chunks and page count
-        chunks, page_count = extract_pdf_chunks(file_bytes, document_id, user_id, original_filename)
+        # Extract chunks and page count based on file type
+        if ext == ".pdf":
+            chunks, page_count = extract_pdf_chunks(file_bytes, document_id, user_id, original_filename)
+        elif ext == ".docx":
+            chunks, page_count = extract_docx_chunks(file_bytes, document_id, user_id, original_filename)
+        elif ext in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"}:
+            chunks, page_count = extract_image_chunks(file_bytes, document_id, user_id, original_filename)
+        else:
+            chunks, page_count = extract_plain_text_chunks(file_bytes, document_id, user_id, original_filename)
 
         # Create Database Record
         db_doc = DBDocument(

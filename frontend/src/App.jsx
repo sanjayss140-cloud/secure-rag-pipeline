@@ -160,10 +160,19 @@ function SecureRagMain() {
   const handleUploadFiles = async (files) => {
     if (!files || files.length === 0) return;
 
-    // Filter PDF only
-    const pdfFiles = files.filter((f) => f.name.toLowerCase().endsWith(".pdf"));
-    if (pdfFiles.length === 0) {
-      showToast("Only PDF documents are supported.", "error");
+    const allowedExtensions = [
+      ".pdf", ".docx", ".txt", ".md", ".csv", ".json", ".xml", ".yaml", ".yml",
+      ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff",
+      ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".sql", ".log"
+    ];
+
+    const validFiles = files.filter((f) => {
+      const ext = "." + f.name.split(".").pop().toLowerCase();
+      return allowedExtensions.includes(ext);
+    });
+
+    if (validFiles.length === 0) {
+      showToast("Supported: PDF, Word (.docx), Text/MD, Code, CSV/JSON, & Images (.png, .jpg, .webp).", "error");
       return;
     }
 
@@ -171,17 +180,17 @@ function SecureRagMain() {
     setUploadStatus(null);
 
     try {
-      const data = await apiUploadDocuments(pdfFiles);
+      const data = await apiUploadDocuments(validFiles);
       setUploadStatus({
         type: "success",
-        message: data.message || `Indexed ${pdfFiles.length} document(s) successfully!`,
+        message: data.message || `Indexed ${validFiles.length} file(s) successfully!`,
       });
-      showToast(data.message, "success");
+      showToast(data.message || `Indexed ${validFiles.length} file(s) successfully!`, "success");
       loadDocuments();
     } catch (err) {
       setUploadStatus({
         type: "error",
-        message: err.message || "Failed to upload documents.",
+        message: err.message || "Failed to upload files.",
       });
       showToast(err.message, "error");
     } finally {
