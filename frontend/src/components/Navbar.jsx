@@ -37,7 +37,7 @@ export default function Navbar({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold tracking-tight text-white">SecureRAG</span>
+              <span className="text-sm font-bold tracking-tight text-white">Mayandi AI</span>
               <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-[#A855F7]/20 text-[#C084FC] border border-[#C084FC]/20">
                 PRO
               </span>

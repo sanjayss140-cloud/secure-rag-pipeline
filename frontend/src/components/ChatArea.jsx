@@ -212,7 +212,7 @@ export default function ChatArea({
             </div>
 
             <h2 className="text-xl font-bold text-white tracking-tight">
-              Ask SecureRAG Assistant
+              Ask Mayandi Assistant
             </h2>
             <p className="mt-2 text-xs md:text-sm text-[#9CA3AF] max-w-md leading-relaxed">
               Upload PDF documents to create your private isolated knowledge base.
