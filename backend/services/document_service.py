@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import List, Dict, Any
 import io
 try:
-    import fitz
+    import pymupdf as fitz
 except Exception:
     try:
-        import pymupdf as fitz
+        import fitz
     except Exception:
         fitz = None
 from sqlalchemy.orm import Session
@@ -165,19 +165,31 @@ def extract_image_chunks(
     user_id: str,
     filename: str,
 ) -> Tuple[List[LCDocument], int]:
-    """Extract visible text from image using Tesseract OCR and split into chunks."""
+    """Extract visible text from image using Tesseract OCR with memory-safe downscaling."""
+    ocr_text = ""
     try:
         from PIL import Image
         import pytesseract
 
-        image = Image.open(io.BytesIO(image_bytes))
-        ocr_text = pytesseract.image_to_string(image).strip()
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            # Downscale large images to max 1280px to keep RAM under 40MB during OCR
+            if max(img.width, img.height) > 1280:
+                scale = 1280 / max(img.width, img.height)
+                new_size = (int(img.width * scale), int(img.height * scale))
+                img = img.resize(new_size, Image.Resampling.BILINEAR)
+
+            ocr_text = pytesseract.image_to_string(img).strip()
     except Exception as e:
         logger.warning("OCR processing warning on image %s: %s", filename, str(e))
         ocr_text = ""
+    finally:
+        import gc
+        gc.collect()
 
     if not ocr_text:
-        ocr_text = f"Uploaded image: {filename}. (No distinct printed text detected via OCR)."
+        ocr_text = f"Uploaded image: {filename}. (Visual media file indexed; no readable printed text detected via OCR)."
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     docs = [

@@ -13,11 +13,10 @@ RUN pip install --no-cache-dir \
     --upgrade pip
 
 RUN pip install --no-cache-dir \
-    --index-url https://download.pytorch.org/whl/cpu \
-    torch==2.5.1
-
-RUN pip install --no-cache-dir \
     -r requirements-docker.txt
+
+# Pre-cache FastEmbed ONNX model in Docker image for 0-second cold start
+RUN python -c "from fastembed import TextEmbedding; list(TextEmbedding('sentence-transformers/all-MiniLM-L6-v2').embed(['warmup']))"
 
 COPY . .
 

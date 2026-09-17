@@ -10,15 +10,29 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-import torch
-torch.set_num_threads(1)
+# Try FastEmbed first (ultra lightweight, ONNX Runtime INT8, ~35MB RAM vs 500MB PyTorch)
+HAS_FASTEMBED = False
 try:
-    torch.set_grad_enabled(False)
+    from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+    HAS_FASTEMBED = True
 except Exception:
-    pass
+    HAS_FASTEMBED = False
+
+# Graceful fallback to PyTorch / HuggingFace if installed
+HAS_HF = False
+try:
+    import torch
+    torch.set_num_threads(1)
+    try:
+        torch.set_grad_enabled(False)
+    except Exception:
+        pass
+    from langchain_huggingface import HuggingFaceEmbeddings
+    HAS_HF = True
+except Exception:
+    HAS_HF = False
 
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from config import EMBEDDING_MODEL, VECTOR_STORE_DIR
 
@@ -31,21 +45,37 @@ def get_embeddings():
     global _embeddings
 
     if _embeddings is None:
-        print("Loading embedding model in low-memory inference mode...")
         gc.collect()
 
-        _embeddings = HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
-            model_kwargs={
-                "device": "cpu",
-            },
-            encode_kwargs={
-                "normalize_embeddings": True,
-                "batch_size": 8,
-            },
+        if HAS_FASTEMBED:
+            print("Loading FastEmbed ONNX embeddings (ultra-low memory ~35MB)...")
+            try:
+                _embeddings = FastEmbedEmbeddings(
+                    model_name="sentence-transformers/all-MiniLM-L6-v2"
+                )
+                print("FastEmbed ONNX embedding model loaded successfully.")
+                return _embeddings
+            except Exception as e:
+                print(f"FastEmbed init failed ({e}), attempting fallback...")
+
+        if HAS_HF:
+            print("Loading HuggingFaceEmbeddings via PyTorch...")
+            _embeddings = HuggingFaceEmbeddings(
+                model_name=EMBEDDING_MODEL,
+                model_kwargs={
+                    "device": "cpu",
+                },
+                encode_kwargs={
+                    "normalize_embeddings": True,
+                    "batch_size": 8,
+                },
+            )
+            print("HuggingFace embedding model loaded successfully.")
+            return _embeddings
+
+        raise RuntimeError(
+            "No embedding provider available. Please install fastembed or langchain-huggingface."
         )
-        gc.collect()
-        print("Embedding model loaded successfully.")
 
     return _embeddings
 
