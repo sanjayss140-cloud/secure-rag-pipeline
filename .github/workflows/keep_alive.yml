@@ -1,0 +1,14 @@
+﻿name: Keep Mayandi Alive
+
+on:
+  schedule:
+    # Ping every 10 minutes so Render never sleeps
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Endpoint
+        run: curl -s -f https://mayandi.onrender.com/api/health || echo "Ping sent"
