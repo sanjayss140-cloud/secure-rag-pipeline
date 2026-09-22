@@ -296,9 +296,9 @@ export default function ChatArea({
       {/* ======================================================================= */}
       {/* ZONE 2 (CENTER): SCROLLABLE CHAT CANVAS                                */}
       {/* ======================================================================= */}
-      <section className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-6 max-w-4xl mx-auto w-full scrollbar-thin">
+      <section className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 space-y-6 max-w-4xl mx-auto w-full flex flex-col">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center py-12 px-4 max-w-lg mx-auto">
+          <div className="my-auto flex flex-col items-center justify-center text-center py-4 px-4 max-w-lg mx-auto w-full">
             {/* Minimal Pro Hero Icon */}
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-900/40 to-[#130F22] border border-purple-500/30 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(157,78,221,0.2)]">
               <Sparkles className="w-7 h-7 text-purple-300" />

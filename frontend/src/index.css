@@ -1,11 +1,16 @@
 @import "tailwindcss";
 
+html {
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: #0B0813;
 }
 
 body {
@@ -14,21 +19,36 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom sleek scrollbars */
-::-webkit-scrollbar {
+/* Universal sleek scrollbars across all modern browsers */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(157, 78, 221, 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+*::-webkit-scrollbar-track {
+  background: #0B0813;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(157, 78, 221, 0.25);
+*::-webkit-scrollbar-thumb {
+  background: rgba(157, 78, 221, 0.35);
   border-radius: 9999px;
+  border: 1px solid rgba(11, 8, 19, 0.8);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(157, 78, 221, 0.5);
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(157, 78, 221, 0.65);
+}
+
+/* Hide scrollbar when desired */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
