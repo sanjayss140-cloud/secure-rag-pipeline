@@ -1,5 +1,7 @@
 import os
 import logging
+import asyncio
+import urllib.request
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,13 +23,46 @@ logging.basicConfig(
 logger = logging.getLogger("securerag-main")
 
 
+async def _self_keep_alive_worker():
+    """
+    Continuous heartbeat loop: Sends an outbound HTTP request to the public URL
+    every 7 minutes so Render's 15-minute inactivity timer never triggers sleep.
+    """
+    # Wait 45 seconds after container startup for uvicorn to settle
+    await asyncio.sleep(45)
+    logger.info("Starting automated self-keep-alive heartbeat...")
+
+    while True:
+        try:
+            public_url = os.environ.get("RENDER_EXTERNAL_URL", "https://mayandi.onrender.com")
+            ping_url = f"{public_url.rstrip('/')}/ping"
+            req = urllib.request.Request(
+                ping_url,
+                headers={"User-Agent": "Mayandi-Internal-Heartbeat/2.0"},
+            )
+            # Execute in thread to avoid blocking asyncio event loop
+            await asyncio.to_thread(urllib.request.urlopen, req, timeout=20)
+            logger.info("Self-keep-alive heartbeat successfully pinged %s", ping_url)
+        except Exception as exc:
+            logger.debug("Keep-alive heartbeat attempt: %s", str(exc))
+
+        # 7 minutes = 420 seconds (well before Render's 15-minute 900s timeout)
+        await asyncio.sleep(420)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager: initialize database tables on startup."""
+    """Lifecycle manager: initialize database tables on startup and start keep-alive heartbeat."""
     logger.info("Initializing SecureRAG database tables...")
     init_db()
     logger.info("SecureRAG backend initialized successfully.")
+
+    # Start the continuous keep-alive task in background
+    keep_alive_task = asyncio.create_task(_self_keep_alive_worker())
+
     yield
+
+    keep_alive_task.cancel()
     logger.info("SecureRAG backend shutting down.")
 
 
@@ -37,6 +72,12 @@ app = FastAPI(
     description="Production-grade private multi-document AI knowledge assistant with prompt injection defenses, JWT auth, and vector retrieval.",
     lifespan=lifespan,
 )
+
+
+@app.get("/ping")
+def ping():
+    """Ultra-fast, zero-overhead endpoint for keep-alive pings."""
+    return {"status": "ok", "service": "mayandi-ai"}
 
 # Structured request/response logging
 app.add_middleware(StructuredLoggingMiddleware)
