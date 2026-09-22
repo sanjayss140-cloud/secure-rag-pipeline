@@ -22,6 +22,7 @@ import {
 function SecureRagMain() {
   const [currentView, setCurrentView] = useState("chat");
   const [isDocumentDrawerOpen, setIsDocumentDrawerOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -32,19 +33,20 @@ function SecureRagMain() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
 
-  const [systemStatus, setSystemStatus] = useState("checking");
+  const [systemStatus, setSystemStatus] = useState("online");
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const { isAuthenticated, token } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout, token } = useAuth();
 
   const showToast = (message, type = "info") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Load health & documents on mount and token change
+  // Load health, documents & conversations
   useEffect(() => {
     async function init() {
       try {
@@ -65,7 +67,7 @@ function SecureRagMain() {
       const data = await apiListDocuments();
       setDocuments(data.documents || []);
     } catch {
-      // silently ignore if unauthenticated or offline
+      // silently ignore if offline
     }
   };
 
@@ -81,6 +83,7 @@ function SecureRagMain() {
   const handleSelectConversation = async (convId) => {
     setCurrentConversationId(convId);
     setCurrentView("chat");
+    setIsAdminOpen(false);
     try {
       const data = await apiGetConversation(convId);
       setMessages(data.messages || []);
@@ -94,6 +97,7 @@ function SecureRagMain() {
     setMessages([]);
     setInput("");
     setCurrentView("chat");
+    setIsAdminOpen(false);
   };
 
   const handleDeleteConversation = async (convId) => {
@@ -163,7 +167,7 @@ function SecureRagMain() {
     const allowedExtensions = [
       ".pdf", ".docx", ".txt", ".md", ".csv", ".json", ".xml", ".yaml", ".yml",
       ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff",
-      ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".sql", ".log"
+      ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".sql", ".log",
     ];
 
     const validFiles = files.filter((f) => {
@@ -209,60 +213,50 @@ function SecureRagMain() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-white flex flex-col font-sans selection:bg-[#A855F7]/30">
-      <Navbar
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        onOpenAuth={() => setAuthModalOpen(true)}
-        onOpenUpload={() => setIsDocumentDrawerOpen(true)}
-        systemStatus={systemStatus}
+    <div className="flex h-screen w-screen bg-[#0B0813] font-sans text-white overflow-hidden selection:bg-[#9D4EDD]/30">
+      {/* ======================================================================= */}
+      {/* ZONE 1: UNIFIED, COLLAPSIBLE SIDEBAR                                    */}
+      {/* ======================================================================= */}
+      <Sidebar
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onSelectConversation={handleSelectConversation}
+        onNewChat={handleNewChat}
+        onDeleteConversation={handleDeleteConversation}
         docCount={documents.length}
-        onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        onOpenUpload={() => setIsDocumentDrawerOpen(true)}
+        isMobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        user={user}
+        isAuthenticated={isAuthenticated}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        logout={logout}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          conversations={conversations}
-          currentConversationId={currentConversationId}
-          onSelectConversation={handleSelectConversation}
-          onNewChat={handleNewChat}
-          onDeleteConversation={handleDeleteConversation}
-          docCount={documents.length}
+      {/* ======================================================================= */}
+      {/* ZONE 2 & 3: CENTRAL CANVAS & FLOATING COMPOSER                          */}
+      {/* ======================================================================= */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <ChatArea
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          onSendMessage={handleSendMessage}
+          isThinking={isThinking}
           onOpenUpload={() => setIsDocumentDrawerOpen(true)}
-          isOpen={mobileSidebarOpen}
-          onClose={() => setMobileSidebarOpen(false)}
+          onUploadFiles={handleUploadFiles}
+          isUploading={isUploading}
+          docCount={documents.length}
+          systemStatus={systemStatus}
+          onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+          isAdmin={isAdmin}
         />
+      </main>
 
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {currentView === "chat" && (
-            <ChatArea
-              messages={messages}
-              input={input}
-              setInput={setInput}
-              onSendMessage={handleSendMessage}
-              isThinking={isThinking}
-              onOpenUpload={() => setIsDocumentDrawerOpen(true)}
-              onUploadFiles={handleUploadFiles}
-              isUploading={isUploading}
-              docCount={documents.length}
-            />
-          )}
-
-          {currentView === "documents" && (
-            <DocumentDrawer
-              documents={documents}
-              onUploadFiles={handleUploadFiles}
-              onDeleteDocument={handleDeleteDocument}
-              isUploading={isUploading}
-              uploadStatus={uploadStatus}
-            />
-          )}
-
-          {currentView === "admin" && <AdminDashboard />}
-        </main>
-      </div>
-
-      {/* Slide-out Document Drawer Overlay */}
+      {/* Slide-out Knowledge Base Document Drawer */}
       <AnimatePresence>
         {isDocumentDrawerOpen && (
           <div className="fixed inset-0 z-50 flex justify-end">
@@ -271,14 +265,14 @@ function SecureRagMain() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsDocumentDrawerOpen(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
+              className="fixed inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
             />
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 26, stiffness: 220 }}
-              className="relative z-10 w-full max-w-2xl h-full bg-[#0D1220] border-l border-white/10 shadow-2xl flex flex-col overflow-hidden"
+              className="relative z-10 w-full max-w-2xl h-full bg-[#130F22] border-l border-purple-900/30 shadow-2xl flex flex-col overflow-hidden"
             >
               <DocumentDrawer
                 documents={documents}
@@ -293,12 +287,46 @@ function SecureRagMain() {
         )}
       </AnimatePresence>
 
+      {/* Admin Metrics Overlay Modal */}
+      <AnimatePresence>
+        {isAdminOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAdminOpen(false)}
+              className="fixed inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative z-10 w-full max-w-4xl max-h-[90vh] bg-[#130F22] border border-purple-900/40 rounded-2xl shadow-2xl overflow-y-auto p-6 scrollbar-thin"
+            >
+              <div className="flex justify-between items-center pb-4 mb-4 border-b border-purple-900/20">
+                <h2 className="text-lg font-bold text-white">System & Analytics Metrics</h2>
+                <button
+                  onClick={() => setIsAdminOpen(false)}
+                  className="px-3 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-[#A0A0CB] hover:text-white text-xs transition cursor-pointer"
+                >
+                  Close (ESC)
+                </button>
+              </div>
+              <AdminDashboard />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Authentication Modal */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         onSuccess={(msg) => showToast(msg, "success")}
       />
 
+      {/* System Toast Alerts */}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );

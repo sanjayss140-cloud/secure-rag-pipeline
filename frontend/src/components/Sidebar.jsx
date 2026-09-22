@@ -1,161 +1,253 @@
 import React from "react";
-import { Plus, MessageSquare, Trash2, Shield, X, Sparkles, Upload } from "lucide-react";
+import {
+  Plus,
+  MessageSquare,
+  Trash2,
+  X,
+  Sparkles,
+  FolderOpen,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  User as UserIcon,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Sidebar({
-  conversations,
+  conversations = [],
   currentConversationId,
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
-  docCount,
+  docCount = 0,
   onOpenUpload,
-  isOpen,
-  onClose,
+  isMobileOpen,
+  onCloseMobile,
+  isCollapsed,
+  onToggleCollapse,
+  user,
+  isAuthenticated,
+  onOpenAuth,
+  logout,
 }) {
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile Backdrop Overlay */}
       <AnimatePresence>
-        {isOpen && (
+        {isMobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            onClick={onCloseMobile}
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
           />
         )}
       </AnimatePresence>
 
+      {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-40 w-[280px] sm:w-[300px] border-r border-white/5 bg-[#0D1220] flex flex-col transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed lg:static top-0 bottom-0 left-0 z-40 h-screen bg-[#130F22] border-r border-purple-900/20 flex flex-col justify-between transition-all duration-300 ease-in-out select-none ${
+          isMobileOpen
+            ? "translate-x-0 w-72"
+            : "-translate-x-full lg:translate-x-0 " + (isCollapsed ? "lg:w-[72px]" : "lg:w-64")
         }`}
       >
-        {/* Mobile Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/5 lg:hidden">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#C084FC]" />
-            <span className="text-sm font-bold text-white">Conversations</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Top Section: Branding, Action, Navigation */}
+        <div className="p-3.5 flex flex-col flex-1 overflow-hidden">
+          {/* Header Branding & Collapse Toggle */}
+          <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-purple-900/20">
+            {!isCollapsed ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-bold text-base tracking-wide bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent truncate">
+                  Mayandi AI
+                </span>
+                <span className="text-[10px] bg-purple-900/50 text-purple-300 font-bold px-1.5 py-0.5 rounded border border-purple-500/30">
+                  PRO
+                </span>
+              </div>
+            ) : (
+              <div className="w-full flex justify-center">
+                <span className="font-bold text-sm text-purple-300">M</span>
+              </div>
+            )}
 
-        {/* New Chat Button */}
-        <div className="p-4 space-y-3">
+            {/* Desktop Collapse Toggle */}
+            <button
+              onClick={onToggleCollapse}
+              className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-[#A0A0CB] hover:text-white hover:bg-purple-500/10 transition"
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+
+            {/* Mobile Close Button */}
+            <button
+              onClick={onCloseMobile}
+              className="lg:hidden p-1.5 rounded-lg text-[#A0A0CB] hover:text-white hover:bg-purple-500/10 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Primary Action: New Chat Button */}
           <button
             onClick={() => {
               onNewChat();
-              onClose();
+              onCloseMobile?.();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#A855F7] to-[#8B5CF6] hover:from-[#B76AF8] hover:to-[#9333EA] text-white text-xs font-semibold shadow-[0_0_25px_rgba(168,85,247,0.25)] transition group"
+            className={`w-full py-2.5 mb-3 bg-gradient-to-r from-[#9D4EDD] to-[#7B2CBF] hover:opacity-90 font-medium rounded-xl text-xs sm:text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40 active:scale-[0.98] transition cursor-pointer ${
+              isCollapsed ? "px-0" : "px-3"
+            }`}
+            title="Start New Chat"
           >
-            <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
-            <span>New Chat</span>
+            <Plus className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span>New Chat</span>}
           </button>
 
-          {/* Dedicated Knowledge Base / Upload Section */}
-          <div className="pt-2">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">
-                Knowledge Base
-              </span>
-              <span className="rounded-full bg-[#A855F7]/15 px-2 py-0.5 text-[10px] font-bold text-[#C084FC] border border-[#C084FC]/20">
-                {docCount ? `${docCount} DOC${docCount > 1 ? "S" : ""}` : "EMPTY"}
-              </span>
-            </div>
+          {/* Navigation Tabs */}
+          <nav className="space-y-1 mb-4">
+            <button
+              onClick={() => {
+                onCloseMobile?.();
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer ${
+                !isCollapsed ? "justify-start" : "justify-center"
+              } bg-purple-500/15 text-purple-200 border border-purple-500/25 shadow-sm`}
+              title="Chat Assistant"
+            >
+              <MessageSquare className="w-4 h-4 text-purple-300 shrink-0" />
+              {!isCollapsed && <span>Chat Assistant</span>}
+            </button>
 
             <button
               onClick={() => {
                 onOpenUpload();
-                onClose();
+                onCloseMobile?.();
               }}
-              className="w-full rounded-xl border border-dashed border-[#C084FC]/30 bg-[#131A2E]/80 p-3 text-left transition hover:border-[#C084FC]/60 hover:bg-[#131A2E] group flex items-center gap-3 shadow-sm"
-              title="Upload PDF documents to knowledge base"
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-[#A0A0CB] hover:bg-purple-500/10 hover:text-white transition cursor-pointer ${
+                !isCollapsed ? "justify-between" : "justify-center"
+              }`}
+              title="Knowledge Base & Uploads"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#A855F7]/20 text-[#C084FC] group-hover:scale-105 transition">
-                <Upload className="h-4 w-4" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FolderOpen className="w-4 h-4 shrink-0 text-purple-400" />
+                {!isCollapsed && <span className="truncate">Knowledge Base</span>}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-white group-hover:text-[#C084FC] transition">
-                  Upload Documents
-                </p>
-                <p className="text-[10px] text-[#9CA3AF] truncate">
-                  Multi-PDF (up to 10 MB)
-                </p>
-              </div>
+              {!isCollapsed && (
+                <span className="text-[10px] bg-purple-900/40 text-purple-300 font-bold px-1.5 py-0.5 rounded-md border border-purple-500/20">
+                  {docCount}
+                </span>
+              )}
             </button>
+          </nav>
+
+          {/* Chat History Section */}
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 pt-2 border-t border-purple-900/15">
+            {!isCollapsed && (
+              <h3 className="text-[11px] font-semibold tracking-wider text-purple-400/70 uppercase px-2 mb-2">
+                Chat History
+              </h3>
+            )}
+
+            <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+              {conversations.length === 0 ? (
+                !isCollapsed && (
+                  <p className="px-2 py-4 text-xs text-[#A0A0CB]/50 text-center">
+                    No chats yet. Ask a question!
+                  </p>
+                )
+              ) : (
+                conversations.map((c) => {
+                  const isActive = c.id === currentConversationId;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        onSelectConversation(c.id);
+                        onCloseMobile?.();
+                      }}
+                      className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition text-xs ${
+                        isCollapsed ? "justify-center" : "justify-between"
+                      } ${
+                        isActive
+                          ? "bg-purple-500/20 text-white font-medium border border-purple-500/30"
+                          : "text-[#A0A0CB] hover:bg-purple-500/5 hover:text-white"
+                      }`}
+                      title={c.title || "Untitled Chat"}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <MessageSquare
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            isActive ? "text-purple-300" : "text-purple-400/40 group-hover:text-purple-300"
+                          }`}
+                        />
+                        {!isCollapsed && (
+                          <span className="truncate">{c.title || "Untitled Chat"}</span>
+                        )}
+                      </div>
+
+                      {!isCollapsed && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteConversation(c.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 text-[#A0A0CB] hover:text-red-400 transition"
+                          title="Delete Chat"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-1 scrollbar-thin">
-          <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
-            Chat History
-          </div>
-
-          {conversations.length === 0 ? (
-            <div className="p-4 text-center text-xs text-white/40">
-              No conversations yet. Start asking questions!
+        {/* Footer: User Profile / Auth Action */}
+        <div className="p-3 border-t border-purple-900/20 bg-[#0E0A1A]">
+          {isAuthenticated ? (
+            <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#9D4EDD] to-[#7B2CBF] flex items-center justify-center font-bold text-xs text-white shadow-inner shrink-0">
+                  {user?.username?.charAt(0).toUpperCase() || "U"}
+                </div>
+                {!isCollapsed && (
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-semibold text-white truncate max-w-[110px]">
+                      {user?.username}
+                    </span>
+                    <span className="text-[10px] text-green-400 flex items-center gap-1">
+                      ● <span className="text-[#A0A0CB]">{user?.role || "user"}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+              {!isCollapsed && (
+                <button
+                  onClick={logout}
+                  className="text-[#A0A0CB] hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ) : (
-            conversations.map((c) => {
-              const isActive = c.id === currentConversationId;
-              return (
-                <div
-                  key={c.id}
-                  className={`group relative flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition text-xs ${
-                    isActive
-                      ? "bg-[#131A2E] text-white border border-[#C084FC]/25 shadow-[0_0_15px_rgba(168,85,247,0.08)]"
-                      : "text-white/70 hover:bg-white/[0.03] hover:text-white"
-                  }`}
-                  onClick={() => {
-                    onSelectConversation(c.id);
-                    onClose();
-                  }}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <MessageSquare
-                      className={`w-4 h-4 shrink-0 ${
-                        isActive ? "text-[#C084FC]" : "text-white/40 group-hover:text-white/70"
-                      }`}
-                    />
-                    <span className="truncate font-medium">{c.title || "Untitled Chat"}</span>
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteConversation(c.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-white/40 hover:text-rose-400 hover:bg-white/5 transition"
-                    title="Delete chat"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })
+            <button
+              onClick={onOpenAuth}
+              className={`w-full py-2 px-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-[#A0A0CB] hover:text-white text-xs font-medium flex items-center ${
+                isCollapsed ? "justify-center" : "justify-center gap-2"
+              } transition cursor-pointer`}
+              title="Sign In"
+            >
+              <UserIcon className="w-3.5 h-3.5 text-purple-300" />
+              {!isCollapsed && <span>Sign In</span>}
+            </button>
           )}
-        </div>
-
-        {/* Security Badge in Footer */}
-        <div className="p-4 border-t border-white/5 bg-[#0A0E1A]">
-          <div className="flex items-center gap-2.5 text-xs text-[#9CA3AF]">
-            <div className="p-1.5 rounded-lg bg-[#A855F7]/10 text-[#C084FC]">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="font-medium text-white text-[11px]">Private Vector Store</p>
-              <p className="text-[10px] text-white/40">Local FAISS Isolated Engine</p>
-            </div>
-          </div>
         </div>
       </aside>
     </>

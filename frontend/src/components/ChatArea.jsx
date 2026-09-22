@@ -1,22 +1,34 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Send, Upload, Sparkles, Copy, Check, FileText, ShieldAlert, ArrowUpRight } from "lucide-react";
+import {
+  Send,
+  Sparkles,
+  Copy,
+  Check,
+  FileText,
+  Paperclip,
+  Info,
+  Menu,
+  BarChart3,
+  ArrowUpRight,
+  ShieldCheck,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function ThinkingOrb() {
   return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="relative flex h-8 w-8 items-center justify-center">
+    <div className="flex items-center gap-3 py-3 px-2">
+      <div className="relative flex h-7 w-7 items-center justify-center">
         <motion.div
-          className="absolute inset-0 rounded-full border border-[#C084FC]/30"
-          animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+          className="absolute inset-0 rounded-full border border-purple-400/40"
+          animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
         />
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#131A2E] ring-1 ring-[#C084FC]/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-          <Sparkles className="h-3.5 w-3.5 text-[#C084FC] animate-pulse" />
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#130F22] ring-1 ring-purple-500/40 shadow-[0_0_15px_rgba(157,78,221,0.3)]">
+          <Sparkles className="h-3 w-3 text-purple-300 animate-pulse" />
         </div>
       </div>
-      <div className="text-xs text-[#C084FC] font-medium animate-pulse">
-        Analyzing private knowledge base & synthesizing answer...
+      <div className="text-xs text-purple-300 font-medium animate-pulse">
+        Searching documents & synthesizing answer...
       </div>
     </div>
   );
@@ -42,7 +54,10 @@ function formatInline(str) {
       );
     } else if (token.startsWith("`") && token.endsWith("`")) {
       parts.push(
-        <code key={match.index} className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs text-[#C084FC]">
+        <code
+          key={match.index}
+          className="px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-500/20 font-mono text-xs text-purple-200"
+        >
           {token.slice(1, -1)}
         </code>
       );
@@ -61,16 +76,16 @@ function renderFormattedContent(text) {
   if (!text) return null;
   const lines = text.split("\n");
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {lines.map((line, idx) => {
         const trimmed = line.trim();
         if (!trimmed) {
-          return <div key={idx} className="h-1" />;
+          return <div key={idx} className="h-1.5" />;
         }
 
         if (trimmed.startsWith("### ")) {
           return (
-            <h3 key={idx} className="text-sm font-bold text-[#C084FC] pt-1 pb-0.5 flex items-center gap-1.5">
+            <h3 key={idx} className="text-sm font-bold text-purple-300 pt-1 flex items-center gap-1.5">
               {trimmed.replace(/^###\s+/, "")}
             </h3>
           );
@@ -78,7 +93,7 @@ function renderFormattedContent(text) {
 
         if (trimmed.startsWith("## ")) {
           return (
-            <h2 key={idx} className="text-base font-bold text-white pt-1 pb-0.5">
+            <h2 key={idx} className="text-base font-bold text-white pt-1">
               {trimmed.replace(/^##\s+/, "")}
             </h2>
           );
@@ -88,7 +103,7 @@ function renderFormattedContent(text) {
           return (
             <blockquote
               key={idx}
-              className="border-l-2 border-[#C084FC]/70 pl-3 py-1 my-1 bg-white/[0.03] rounded-r-lg text-white/80 italic text-xs leading-relaxed"
+              className="border-l-2 border-purple-500/60 pl-3 py-1 bg-purple-950/20 rounded-r-lg text-purple-200/90 italic text-xs leading-relaxed"
             >
               {formatInline(trimmed.replace(/^>\s+/, ""))}
             </blockquote>
@@ -97,15 +112,15 @@ function renderFormattedContent(text) {
 
         if (trimmed.startsWith("• ") || trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
           return (
-            <div key={idx} className="flex items-start gap-2 pl-1 text-sm text-white/90">
-              <span className="text-[#C084FC] font-bold mt-1 text-xs">•</span>
+            <div key={idx} className="flex items-start gap-2 pl-1 text-sm text-purple-100">
+              <span className="text-purple-400 font-bold mt-1 text-xs">•</span>
               <span className="flex-1">{formatInline(trimmed.replace(/^[•\-\*]\s+/, ""))}</span>
             </div>
           );
         }
 
         return (
-          <p key={idx} className="text-sm leading-relaxed text-white/90">
+          <p key={idx} className="text-sm leading-relaxed text-purple-100 font-light">
             {formatInline(line)}
           </p>
         );
@@ -123,18 +138,41 @@ export default function ChatArea({
   onOpenUpload,
   onUploadFiles,
   isUploading,
-  docCount,
+  docCount = 0,
+  systemStatus = "online",
+  onToggleMobileSidebar,
+  onOpenAdmin,
+  isAdmin = false,
 }) {
   const [copiedId, setCopiedId] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
-  const composerFileInputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const handleComposerFileChange = (e) => {
+  const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       onUploadFiles?.(Array.from(e.target.files));
     }
     e.target.value = "";
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      onUploadFiles?.(Array.from(e.dataTransfer.files));
+    }
   };
 
   useEffect(() => {
@@ -161,87 +199,132 @@ export default function ChatArea({
     }
   };
 
-  const suggestedQuestions = [
+  const promptSuggestions = [
     "What are the main topics discussed in the uploaded documents?",
-    "Summarize the key findings and conclusions in bullet points.",
-    "What specific database tables and schema rules are defined?",
+    "Summarize the key findings and conclusions in concise bullet points.",
+    "Explain the key definitions and data points extracted from the files.",
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-[#0B0F19] relative overflow-hidden">
-      {/* Background AI Glow */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-[#A855F7]/5 blur-[120px]" />
-        <div className="absolute -right-32 top-1/4 h-96 w-96 rounded-full bg-[#C084FC]/5 blur-[120px]" />
-      </div>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="flex-1 flex flex-col h-screen bg-[#0B0813] relative overflow-hidden select-text"
+    >
+      {/* Drag & Drop Overlay */}
+      <AnimatePresence>
+        {isDragOver && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-[#0B0813]/90 backdrop-blur-md flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-500/50 m-4 rounded-3xl"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-purple-900/40 border border-purple-500/40 flex items-center justify-center mb-4 shadow-xl">
+              <Paperclip className="w-8 h-8 text-purple-300" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Drop files to upload & index</h3>
+            <p className="text-xs text-[#A0A0CB] mt-1">
+              Supports PDFs, Word documents, Markdown, Code, CSV, and Images (OCR)
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Knowledge Base Header Bar */}
-      <div className="h-12 border-b border-white/5 bg-[#0D1220]/70 px-4 md:px-6 flex items-center justify-between shrink-0 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
-            <FileText className="w-4 h-4 text-[#C084FC]" />
+      {/* ======================================================================= */}
+      {/* ZONE 2 (TOP): MINIMAL NAVBAR ROW                                       */}
+      {/* ======================================================================= */}
+      <header className="h-14 px-4 sm:px-8 border-b border-purple-900/20 flex items-center justify-between bg-[#0B0813]/80 backdrop-blur-md z-10 shrink-0">
+        {/* Left: Mobile Toggle & Knowledge Status */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onToggleMobileSidebar}
+            className="lg:hidden p-1.5 rounded-lg text-[#A0A0CB] hover:text-white hover:bg-purple-500/10 transition"
+            title="Open Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div
+            onClick={onOpenUpload}
+            className="flex items-center gap-2 text-xs text-[#A0A0CB] hover:text-white transition cursor-pointer group"
+            title="Click to view & upload knowledge base documents"
+          >
+            <span className="text-sm">📄</span>
             <span className="hidden sm:inline">Active Knowledge Base:</span>
-            <span className="font-semibold text-white">
-              {docCount === 0 ? "No documents uploaded" : `${docCount} document${docCount > 1 ? "s" : ""} indexed`}
+            <span className="text-purple-300 font-semibold group-hover:underline">
+              {docCount === 0 ? "0 documents" : `${docCount} document${docCount > 1 ? "s" : ""} indexed`}
             </span>
           </div>
+
           {isUploading && (
-            <span className="flex items-center gap-1.5 text-[11px] text-[#C084FC] animate-pulse bg-[#A855F7]/15 px-2.5 py-0.5 rounded-full border border-[#C084FC]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#C084FC] animate-ping" />
-              Indexing PDFs...
+            <span className="flex items-center gap-1.5 text-[10px] text-purple-300 bg-purple-900/30 px-2 py-0.5 rounded-full border border-purple-500/30 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
+              Indexing...
             </span>
           )}
         </div>
 
-        <button
-          onClick={onOpenUpload}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#A855F7]/20 to-[#7C3AED]/20 hover:from-[#A855F7]/30 hover:to-[#7C3AED]/30 text-[#C084FC] hover:text-white border border-[#C084FC]/30 text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer"
-          title="Open Document Manager / Upload PDFs"
-        >
-          <Upload className="w-3.5 h-3.5" />
-          <span>Upload Documents</span>
-        </button>
-      </div>
+        {/* Right: Admin Link & System Status */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          {isAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className="text-xs text-[#A0A0CB] hover:text-purple-300 transition-all font-medium flex items-center gap-1.5 cursor-pointer"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Admin Metrics</span>
+            </button>
+          )}
 
-      {/* Messages Scroll View */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scrollbar-thin">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#130F22] border border-purple-900/30 text-[11px]">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                systemStatus === "online" || systemStatus === "healthy"
+                  ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse"
+                  : "bg-amber-400"
+              }`}
+            />
+            <span className="text-[#A0A0CB] text-[10px] capitalize hidden sm:inline">
+              {systemStatus || "online"}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* ======================================================================= */}
+      {/* ZONE 2 (CENTER): SCROLLABLE CHAT CANVAS                                */}
+      {/* ======================================================================= */}
+      <section className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-6 max-w-4xl mx-auto w-full scrollbar-thin">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto py-12 px-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#A855F7]/10 ring-1 ring-[#C084FC]/25 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
-              <Sparkles className="w-7 h-7 text-[#C084FC]" />
+          <div className="h-full flex flex-col items-center justify-center text-center py-12 px-4 max-w-lg mx-auto">
+            {/* Minimal Pro Hero Icon */}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-900/40 to-[#130F22] border border-purple-500/30 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(157,78,221,0.2)]">
+              <Sparkles className="w-7 h-7 text-purple-300" />
             </div>
 
             <h2 className="text-xl font-bold text-white tracking-tight">
-              Ask Mayandi Assistant
+              Mayandi AI Assistant
             </h2>
-            <p className="mt-2 text-xs md:text-sm text-[#9CA3AF] max-w-md leading-relaxed">
-              Upload PDF documents to create your private isolated knowledge base.
-              Every answer is evidence-grounded with precise page citations.
+            <p className="mt-2 text-xs sm:text-sm text-[#A0A0CB] leading-relaxed">
+              Private document intelligence powered by local vector retrieval. Ask questions, extract data,
+              and receive evidence-grounded answers.
             </p>
 
-            <button
-              onClick={onOpenUpload}
-              className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#A855F7] to-[#7C3AED] hover:from-[#B76AF8] hover:to-[#8B5CF6] text-white text-xs font-semibold shadow-[0_0_20px_rgba(168,85,247,0.35)] transition cursor-pointer active:scale-95"
-            >
-              <Upload className="w-4 h-4" />
-              {docCount === 0
-                ? "Upload Your First Document"
-                : `Manage & Upload Documents (${docCount})`}
-            </button>
-
-            {/* Suggested Prompts */}
-            <div className="mt-8 w-full space-y-2">
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-[#9CA3AF] text-left px-1">
-                Suggested Prompts
+            {/* Prompt Starter Cards */}
+            <div className="mt-8 w-full space-y-2 text-left">
+              <p className="text-[11px] font-semibold tracking-wider text-purple-400/70 uppercase px-1">
+                Suggested Starters
               </p>
-              {suggestedQuestions.map((q, idx) => (
+              {promptSuggestions.map((q, idx) => (
                 <button
                   key={idx}
                   onClick={() => setInput(q)}
-                  className="w-full text-left p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-[#C084FC]/30 text-xs text-white/80 hover:text-white flex items-center justify-between group transition"
+                  className="w-full text-left p-3 rounded-xl bg-[#130F22] hover:bg-[#1a1430] border border-purple-900/30 hover:border-purple-500/40 text-xs text-[#A0A0CB] hover:text-white flex items-center justify-between group transition cursor-pointer"
                 >
                   <span className="truncate mr-2">{q}</span>
-                  <ArrowUpRight className="w-4 h-4 text-white/30 group-hover:text-[#C084FC] transition shrink-0" />
+                  <ArrowUpRight className="w-4 h-4 text-purple-400/40 group-hover:text-purple-300 transition shrink-0" />
                 </button>
               ))}
             </div>
@@ -252,82 +335,81 @@ export default function ChatArea({
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-3.5 max-w-3xl ${isUser ? "ml-auto" : "mr-auto"}`}
+                transition={{ duration: 0.2 }}
+                className={`w-full flex ${isUser ? "justify-end" : "justify-start"}`}
               >
-                {!isUser && (
-                  <div className="w-8 h-8 rounded-xl bg-[#A855F7]/15 ring-1 ring-[#C084FC]/30 flex items-center justify-center shrink-0 mt-1 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
-                    <Sparkles className="w-4 h-4 text-[#C084FC]" />
+                {isUser ? (
+                  /* User Bubble Node: Right-aligned, sleek purple gradient, rounded-tr-none */
+                  <div className="max-w-[85%] sm:max-w-[75%] bg-gradient-to-br from-[#7B2CBF]/40 to-[#9D4EDD]/25 border border-purple-500/20 px-4 py-3 rounded-2xl rounded-tr-none text-sm text-purple-50 shadow-md leading-relaxed whitespace-pre-wrap">
+                    {msg.content}
+                  </div>
+                ) : (
+                  /* Bot Bubble Node: Borderless typography resting directly on primary canvas */
+                  <div className="flex gap-3.5 max-w-[95%] sm:max-w-[85%] items-start">
+                    <div className="w-8 h-8 rounded-xl bg-[#130F22] border border-purple-500/30 flex items-center justify-center text-sm shadow-sm shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-purple-300" />
+                    </div>
+
+                    <div className="flex-1 space-y-3">
+                      {/* Text Body */}
+                      <div className="text-sm text-purple-100 leading-relaxed font-light">
+                        {renderFormattedContent(msg.content)}
+                      </div>
+
+                      {/* Smart Citation Drawer / List Section */}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="pt-2 border-t border-purple-900/20">
+                          <div className="text-[11px] font-semibold text-purple-400/80 tracking-wide uppercase mb-2 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Source Grounding Citations ({msg.sources.length})</span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {msg.sources.map((src, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="flex items-center gap-1.5 text-xs bg-[#130F22] hover:bg-[#1a1430] text-purple-200 px-3 py-1.5 rounded-lg border border-purple-500/20 transition-all cursor-pointer shadow-sm"
+                                title={`Grounded source: ${src.file}${src.page ? ` (Page ${src.page})` : ""}`}
+                              >
+                                <FileText className="w-3.5 h-3.5 text-purple-300" />
+                                <span className="truncate max-w-[170px] font-medium">{src.file}</span>
+                                {src.page && (
+                                  <span className="text-purple-400 font-semibold text-[11px]">
+                                    (p.{src.page})
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Footer micro-actions: Confidence & Copy button */}
+                      <div className="flex items-center justify-between text-[11px] text-[#A0A0CB]/70 pt-1">
+                        <span>{msg.confidence ? `Confidence: ${msg.confidence}` : "Mayandi AI"}</span>
+                        <button
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className="flex items-center gap-1 hover:text-white transition cursor-pointer"
+                          title="Copy Answer"
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
-
-                <div
-                  className={`rounded-2xl p-4 text-sm leading-relaxed ${
-                    isUser
-                      ? "bg-[#A855F7] text-white shadow-[0_0_25px_rgba(168,85,247,0.2)] rounded-tr-sm"
-                      : "bg-[#131A2E] text-white/95 border border-white/5 shadow-lg rounded-tl-sm"
-                  }`}
-                >
-                  {isUser ? (
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                  ) : (
-                    renderFormattedContent(msg.content)
-                  )}
-                  {!isUser && msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-3.5 pt-3 border-t border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-[#9CA3AF]">
-                          Source Citations ({msg.sources.length})
-                        </span>
-                        {msg.grounded && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                            ✓ Grounded Evidence
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {msg.sources.map((src, sIdx) => (
-                          <div
-                            key={sIdx}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-[11px] text-white/80"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-[#C084FC]" />
-                            <span className="font-medium truncate max-w-[180px]">{src.file}</span>
-                            {src.page && (
-                              <span className="text-[#C084FC] font-semibold">p. {src.page}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Controls for Assistant Messages */}
-                  {!isUser && (
-                    <div className="mt-3 pt-2 flex items-center justify-between border-t border-white/[0.04] text-[11px] text-[#9CA3AF]">
-                      <span>{msg.confidence ? `Confidence: ${msg.confidence}` : "SecureRAG"}</span>
-                      <button
-                        onClick={() => handleCopy(msg.id, msg.content)}
-                        className="flex items-center gap-1 hover:text-white transition"
-                        title="Copy text"
-                      >
-                        {copiedId === msg.id ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
               </motion.div>
             );
           })
@@ -335,53 +417,89 @@ export default function ChatArea({
 
         {isThinking && <ThinkingOrb />}
         <div ref={messagesEndRef} />
-      </div>
+      </section>
 
-      {/* Composer Input Bar */}
-      <div className="p-3 sm:p-4 border-t border-white/5 bg-[#0D1220]/90 backdrop-blur-xl">
-        <div className="max-w-3xl mx-auto flex items-end gap-2 bg-[#131A2E] rounded-2xl border border-[#C084FC]/20 p-2 shadow-2xl focus-within:border-[#C084FC]/50 transition">
-          <input
-            ref={composerFileInputRef}
-            type="file"
-            multiple
-            accept=".pdf"
-            onChange={handleComposerFileChange}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => composerFileInputRef.current?.click()}
-            title="Upload PDF documents"
-            disabled={isUploading}
-            className="p-2.5 rounded-xl text-white/50 hover:text-[#C084FC] hover:bg-white/5 transition shrink-0 cursor-pointer disabled:opacity-40"
-          >
-            <Upload className={`w-5 h-5 ${isUploading ? "animate-bounce text-[#C084FC]" : ""}`} />
-          </button>
+      {/* ======================================================================= */}
+      {/* ZONE 3: FLOATING COMPOSER UNIT (BOTTOM CENTER)                          */}
+      {/* ======================================================================= */}
+      <div className="px-4 sm:px-8 pb-5 pt-2 shrink-0">
+        <div className="max-w-3xl mx-auto relative">
+          {/* Floating Pill Box */}
+          <div className="flex items-end gap-2 bg-[#130F22]/95 backdrop-blur-xl border border-purple-500/30 hover:border-purple-500/50 focus-within:border-purple-500/80 rounded-2xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.6)] transition-all">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.docx,.txt,.md,.csv,.json,.py,.js,.png,.jpg,.jpeg,.webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
 
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything about your uploaded documents..."
-            className="flex-1 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none resize-none py-2 px-1 max-h-36 scrollbar-thin"
-          />
+            {/* Left inside slot: File attachment button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="p-2 rounded-xl text-[#A0A0CB] hover:text-purple-300 hover:bg-purple-500/10 transition shrink-0 cursor-pointer disabled:opacity-40"
+              title="Attach documents or images"
+            >
+              <Paperclip className={`w-4 h-4 ${isUploading ? "animate-spin text-purple-300" : ""}`} />
+            </button>
 
-          <button
-            onClick={onSendMessage}
-            disabled={!input.trim() || isThinking}
-            className="p-2.5 rounded-xl bg-[#A855F7] hover:bg-[#B76AF8] text-white disabled:opacity-40 disabled:hover:bg-[#A855F7] transition shadow-[0_0_15px_rgba(168,85,247,0.3)] shrink-0"
-            aria-label="Send query"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+            {/* Left inside slot: Info Tooltip (i) */}
+            <div className="relative shrink-0 flex items-center">
+              <button
+                type="button"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={() => setShowTooltip(!showTooltip)}
+                className="p-2 rounded-xl text-[#A0A0CB] hover:text-purple-300 hover:bg-purple-500/10 transition"
+                title="System Security Information"
+              >
+                <Info className="w-4 h-4" />
+              </button>
 
-        <div className="text-center mt-2">
-          <p className="text-[10px] text-white/40">
-            SecureRAG defends against prompt injections & ensures all answers are grounded in private documents.
-          </p>
+              <AnimatePresence>
+                {showTooltip && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    className="absolute bottom-11 left-0 z-30 w-64 p-2.5 rounded-xl bg-[#0B0813] border border-purple-500/30 text-[11px] text-[#A0A0CB] shadow-xl pointer-events-none leading-relaxed"
+                  >
+                    <p className="font-semibold text-white mb-0.5">SecureRAG Shield Active</p>
+                    Defends against prompt injections and ensures answers are grounded directly in your uploaded files.
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Textarea Input */}
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask anything about your documents..."
+              className="flex-1 bg-transparent text-sm text-white placeholder-[#A0A0CB]/70 focus:outline-none resize-none py-2 px-1 max-h-36 scrollbar-thin leading-relaxed"
+            />
+
+            {/* Right inside slot: Neon Circular Action Button (>) */}
+            <button
+              onClick={onSendMessage}
+              disabled={!input.trim() || isThinking}
+              className={`p-2.5 rounded-xl transition-all shrink-0 cursor-pointer shadow-md ${
+                input.trim() && !isThinking
+                  ? "bg-gradient-to-r from-[#9D4EDD] to-[#7B2CBF] text-white shadow-purple-900/50 active:scale-95"
+                  : "bg-purple-950/40 text-purple-400/40 cursor-not-allowed"
+              }`}
+              title="Send Message (Enter)"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

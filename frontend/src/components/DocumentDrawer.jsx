@@ -161,7 +161,7 @@ export default function DocumentDrawer({
                 key={doc.document_id || doc.filename}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-2xl border border-white/5 hover:border-[#C084FC]/30 bg-[#131A2E]/80 backdrop-blur-md transition group shadow-lg flex flex-col justify-between"
+                className="p-4 rounded-2xl border border-purple-900/30 hover:border-purple-500/30 bg-[#130F22] backdrop-blur-md transition group shadow-lg flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
