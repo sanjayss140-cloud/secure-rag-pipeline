@@ -8,6 +8,13 @@ export function getApiBase() {
     ) {
       return "http://127.0.0.1:8000";
     }
+    // If hosted on GitHub Pages (*.github.io) or Vercel, route to live Render backend
+    if (
+      window.location.hostname.includes("github.io") ||
+      window.location.hostname.includes("vercel.app")
+    ) {
+      return "https://mayandi.onrender.com";
+    }
     // On production (Render / any cloud host) or when served by backend, use same-origin relative URLs
     return "";
   }
