@@ -19,7 +19,8 @@ from langchain_community.vectorstores import FAISS
 
 from config import PDF_DIR, VECTOR_STORE_DIR, CHUNK_SIZE, CHUNK_OVERLAP, MAX_FILE_SIZE_BYTES
 from retriever import get_embeddings, reset_vector_db, get_vector_db
-from backend.database.models import Document as DBDocument, DocumentChunkMetadata
+from backend.database.models import Document as DBDocument, DocumentChunkMetadata, UsageEvent
+from backend.rag.vision import analyze_image_bytes
 from backend.security.sanitizer import sanitize_filename
 
 logger = logging.getLogger("securerag-document-service")
@@ -165,37 +166,23 @@ def extract_image_chunks(
     user_id: str,
     filename: str,
 ) -> Tuple[List[LCDocument], int]:
-    """Extract visible text from image using Tesseract OCR with memory-safe downscaling."""
-    ocr_text = ""
-    try:
-        from PIL import Image
-        import pytesseract
-
-        with Image.open(io.BytesIO(image_bytes)) as img:
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            # Downscale large images to max 1280px to keep RAM under 40MB during OCR
-            if max(img.width, img.height) > 1280:
-                scale = 1280 / max(img.width, img.height)
-                new_size = (int(img.width * scale), int(img.height * scale))
-                img = img.resize(new_size, Image.Resampling.BILINEAR)
-
-            ocr_text = pytesseract.image_to_string(img).strip()
-    except Exception as e:
-        logger.warning("OCR processing warning on image %s: %s", filename, str(e))
-        ocr_text = ""
-    finally:
-        import gc
-        gc.collect()
-
-    if not ocr_text:
-        ocr_text = f"Uploaded image: {filename}. (Visual media file indexed; no readable printed text detected via OCR)."
+    """Extract visible text and rich visual metadata from image using OCR and vision heuristics."""
+    img_data = analyze_image_bytes(image_bytes, filename)
+    visual_summary = img_data.get("visual_summary") or f"Uploaded image: {filename}"
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     docs = [
         LCDocument(
-            page_content=ocr_text,
-            metadata={"user_id": user_id, "document_id": document_id, "filename": filename, "page": 0},
+            page_content=visual_summary,
+            metadata={
+                "user_id": user_id,
+                "document_id": document_id,
+                "filename": filename,
+                "page": 0,
+                "is_image": True,
+                "image_format": img_data.get("format", "unknown"),
+                "image_category": img_data.get("category", "image"),
+            },
         )
     ]
     chunks = splitter.split_documents(docs)
@@ -318,6 +305,25 @@ def process_and_save_document(
         else:
             vector_db = FAISS.from_documents(chunks, embeddings)
             vector_db.save_local(str(VECTOR_STORE_DIR))
+
+        # Record Usage Event for admin observability and telemetry
+        try:
+            usage_event = UsageEvent(
+                user_id=user_id,
+                endpoint="/api/documents/upload",
+                llm_provider="FastEmbed",
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                prompt_tokens=len(chunks) * 50,
+                completion_tokens=0,
+                total_tokens=len(chunks) * 50,
+                estimated_cost=0.0,
+                latency_ms=0.0,
+                status_code=201,
+            )
+            db.add(usage_event)
+            db.commit()
+        except Exception as e_metric:
+            logger.warning("Failed to record usage event: %s", str(e_metric))
 
         from retriever import reset_embeddings
         reset_embeddings()

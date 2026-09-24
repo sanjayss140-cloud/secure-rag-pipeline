@@ -33,11 +33,15 @@ def test_health_detailed_endpoint():
 
 
 def test_root_endpoint():
-    """Verify GET / returns 200 OK with welcome message."""
+    """Verify GET / returns 200 OK with welcome message or React SPA index."""
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert "SecureRAG API is operational" in data["message"]
+    content_type = response.headers.get("content-type", "")
+    if "text/html" in content_type:
+        assert "<!doctype html>" in response.text.lower() or "root" in response.text.lower()
+    else:
+        data = response.json()
+        assert "SecureRAG API is operational" in data["message"]
 
 
 def test_register_and_login_flow():

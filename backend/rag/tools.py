@@ -52,7 +52,12 @@ def tool_search_documents(query: str, user_id: str, top_k: int = 5) -> List[Dict
     """
     Tool: Search FAISS vector store for relevant document chunks.
     """
-    retrieved_docs = get_relevant_documents(query)
+    try:
+        retrieved_docs = get_relevant_documents(query)
+    except Exception as exc:
+        logger.debug("FAISS retrieval skipped: %s", str(exc))
+        return []
+
     results = []
     for doc in retrieved_docs[:top_k]:
         meta = doc.metadata or {}
