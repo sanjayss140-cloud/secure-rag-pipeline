@@ -3,10 +3,14 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.0+-61DAFB.svg?style=flat&logo=react)](https://reactjs.org)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-v4.0-38B2AC.svg?style=flat&logo=tailwind-css)](https://tailwindcss.com)
+[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live_Frontend-brightgreen.svg?logo=github)](https://sanjayss140-cloud.github.io/secure-rag-pipeline/)
 [![FAISS](https://img.shields.io/badge/FAISS-CPU_ONNX-blue.svg?style=flat)](https://github.com/facebookresearch/faiss)
 [![Groq LPU](https://img.shields.io/badge/Groq-Qwen3.8--27B-f55036.svg?style=flat)](https://groq.com)
 [![Tests Passing](https://img.shields.io/badge/Tests-19%2F19%20Passed-success.svg)](https://github.com/sanjayss140-cloud/secure-rag-pipeline)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **Live GitHub Pages URL**: **[https://sanjayss140-cloud.github.io/secure-rag-pipeline/](https://sanjayss140-cloud.github.io/secure-rag-pipeline/)**  
+> **Live Web Tunnel (Instant Test)**: **[https://extends-bring-adequate-close.trycloudflare.com](https://extends-bring-adequate-close.trycloudflare.com)**
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sanjayss140-cloud/secure-rag-pipeline)
 [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/sanjayss140-cloud/secure-rag-pipeline&branch=main&name=mayandi-ai)
