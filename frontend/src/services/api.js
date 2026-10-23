@@ -1,5 +1,19 @@
 export function getApiBase() {
   if (typeof window !== "undefined") {
+    // Check if custom backend URL is configured in localStorage or query parameter
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryBackend = urlParams.get("backend");
+      if (queryBackend) {
+        localStorage.setItem("mayandi_backend_url", queryBackend);
+        return queryBackend.replace(/\/+$/, "");
+      }
+      const customUrl = localStorage.getItem("mayandi_backend_url");
+      if (customUrl) {
+        return customUrl.replace(/\/+$/, "");
+      }
+    } catch (_) {}
+
     // If running in Vite dev mode on localhost with non-backend port, route to local FastAPI
     if (
       (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
@@ -8,7 +22,7 @@ export function getApiBase() {
     ) {
       return "http://127.0.0.1:8000";
     }
-    // If hosted on GitHub Pages (*.github.io) or Vercel, route to live Render backend
+    // If hosted on GitHub Pages (*.github.io) or Vercel, route to live backend
     if (
       window.location.hostname.includes("github.io") ||
       window.location.hostname.includes("vercel.app")
