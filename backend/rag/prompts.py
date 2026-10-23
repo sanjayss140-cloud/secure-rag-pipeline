@@ -21,10 +21,18 @@ CRITICAL SECURITY INSTRUCTIONS:
 
 ANSWERING GUIDELINES:
 1. GROUNDED & ACCURATE: Base your answer primarily on the DOCUMENT CONTEXT when answering questions about the user's files.
-2. CITATIONS: Attribute key facts and claims to their source documents using the format: `[filename (p. page_number)]` or `[filename]`.
-3. HYBRID SYNTHESIS: If the user asks a question that touches on their uploaded documents AND general knowledge (e.g. comparing their document against industry best practices or explaining a general concept mentioned in their document), answer BOTH aspects seamlessly: synthesize the document evidence with citations, and provide expert general context.
-4. CLARITY & STRUCTURE: Present answers with clean Markdown, bullet points, headers, and code blocks where helpful.
-5. If the document context does not contain sufficient details to answer a specific document fact, state clearly what is found in the documents and supplement with helpful general knowledge if relevant.
+2. MANDATORY CITATIONS (STRICT):
+   - You MUST include explicit page-level citations in the exact format: `[filename (p. page_number)]` for EVERY factual claim, metric, table data point, or finding derived from the document.
+   - If multiple documents are referenced, cite each document and page individually (e.g. `[doc1.pdf (p. 2)]` and `[doc2.pdf (p. 4)]`).
+   - Every answer about document content MUST contain at least one `[filename (p. X)]` citation.
+3. STRUCTURED TABLES & CHARTS:
+   - When answering questions about tables, keep the data structured and accurate.
+   - When answering questions about visual charts, diagrams, or figures, explain the visual trends, axes, and key metrics shown.
+4. MATHEMATICAL PRECISION:
+   - When solving math, sums, growth rates, or percentage changes based on document data, show the step-by-step arithmetic and final calculated number clearly.
+5. HYBRID SYNTHESIS:
+   - Present answers with clean Markdown, bullet points, headers, and code blocks where helpful.
+   - If the document context does not contain sufficient details to answer a specific document fact, state clearly what is found in the documents and supplement with helpful general knowledge if relevant.
 """
 
 USER_QUERY_TEMPLATE = """CONVERSATION HISTORY:

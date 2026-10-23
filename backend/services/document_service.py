@@ -54,15 +54,56 @@ def extract_pdf_chunks(
             for page_num in range(page_count):
                 page = doc[page_num]
                 text = page.get_text("text").strip()
-                if text:
+                has_visuals = len(page.get_drawings()) > 3 or len(page.get_images()) > 0
+
+                # 1. Structured Table Extraction (fitz.find_tables)
+                tables_md = []
+                try:
+                    tabs = page.find_tables()
+                    if tabs and tabs.tables:
+                        for tab in tabs.tables:
+                            rows = tab.extract()
+                            if rows and len(rows) > 0:
+                                header = [str(c or "").strip() for c in rows[0]]
+                                header_line = "| " + " | ".join(header) + " |"
+                                sep_line = "| " + " | ".join(["---"] * max(1, len(header))) + " |"
+                                body_lines = ["| " + " | ".join([str(c or "").strip() for c in r]) + " |" for r in rows[1:]]
+                                tables_md.append(f"\n[STRUCTURED TABLE ON PAGE {page_num + 1}]:\n" + "\n".join([header_line, sep_line] + body_lines))
+                except Exception as e_tab:
+                    logger.debug("Table extraction on page %d: %s", page_num + 1, str(e_tab))
+
+                # 2. Scanned Page OCR Fallback if text is empty or sparse (< 20 characters)
+                if len(text) < 20:
+                    try:
+                        pix = page.get_pixmap(dpi=150)
+                        img_bytes = pix.tobytes("png")
+                        from PIL import Image
+                        import pytesseract
+                        with Image.open(io.BytesIO(img_bytes)) as pil_img:
+                            ocr_text = pytesseract.image_to_string(pil_img).strip()
+                            if ocr_text:
+                                text = f"[SCANNED DOCUMENT OCR - PAGE {page_num + 1}]:\n" + ocr_text
+                    except Exception as e_ocr:
+                        logger.warning("Scanned page OCR fallback failed on page %d: %s", page_num + 1, str(e_ocr))
+
+                # 3. Chart & Visual Content Tagging
+                visual_desc = ""
+                if has_visuals:
+                    visual_desc = f"\n[VISUAL CONTENT / CHART / FIGURE ON PAGE {page_num + 1}]: Depicts visual figures, charts, and graphical data."
+
+                combined_content = "\n\n".join(filter(None, [text, "\n\n".join(tables_md), visual_desc])).strip()
+
+                if combined_content:
                     extracted_docs.append(
                         LCDocument(
-                            page_content=text,
+                            page_content=combined_content,
                             metadata={
                                 "user_id": user_id,
                                 "document_id": document_id,
                                 "filename": filename,
                                 "page": page_num,
+                                "has_tables": len(tables_md) > 0,
+                                "has_charts": has_visuals,
                             },
                         )
                     )

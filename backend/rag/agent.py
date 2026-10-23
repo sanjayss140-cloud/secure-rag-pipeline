@@ -21,6 +21,7 @@ class SourceCitationSchema(BaseModel):
     file: str
     page: Optional[int] = None
     document_id: Optional[str] = None
+    snippet: Optional[str] = None
 
 
 class RAGResponseSchema(BaseModel):
@@ -79,6 +80,7 @@ def run_rag_agent(
     user_id: str,
     db: Session,
     history: Optional[List[Dict[str, str]]] = None,
+    doc_ids: Optional[List[str]] = None,
 ) -> RAGResponseSchema:
     """
     Production-grade Hybrid Intelligence & RAG Agent:
@@ -156,10 +158,17 @@ def run_rag_agent(
         return RAGResponseSchema(answer=ans, confidence="high", sources=[], grounded=True)
 
     # Step 3: Check user document status and determine query intent
-    doc_list_res = tool_list_documents(db, user_id)
-    user_docs = doc_list_res.get("documents", [])
+    # If doc_ids is explicitly empty list ([]), user has no documents in current session -> Normal Chat directly!
+    if doc_ids == []:
+        has_documents = False
+        user_docs = []
+    else:
+        doc_list_res = tool_list_documents(db, user_id)
+        user_docs = doc_list_res.get("documents", [])
+        if doc_ids is not None and len(doc_ids) > 0:
+            user_docs = [d for d in user_docs if d["document_id"] in doc_ids]
+        has_documents = len(user_docs) > 0
 
-    has_documents = len(user_docs) > 0
     explicit_doc_intent = any(
         kw in lower_q
         for kw in [
@@ -181,13 +190,13 @@ def run_rag_agent(
     search_results = []
     if has_documents:
         top_k = 8 if any(w in lower_q for w in ["summarize", "overview", "all", "topics"]) else 5
-        search_results = tool_search_documents(clean_question, user_id, top_k=top_k)
+        search_results = tool_search_documents(clean_question, user_id, doc_ids=doc_ids, top_k=top_k)
 
         # Keyword fallback search if no exact vector matches
         if not search_results and (explicit_doc_intent or filename_mentioned):
             keywords = " ".join([w for w in clean_question.split() if len(w) > 3])
             if keywords:
-                search_results = tool_search_documents(keywords, user_id, top_k=top_k)
+                search_results = tool_search_documents(keywords, user_id, doc_ids=doc_ids, top_k=top_k)
 
     # Step 5: Format Conversation History
     history_str = ""
@@ -210,13 +219,15 @@ def run_rag_agent(
             context_chunks.append(
                 f"--- EXCERPT {idx} (Source: {filename}, Page: {page}) ---\n{content}"
             )
-            sources_dict[(filename, page)] = doc_id
+            # Store doc_id and first 240 chars of snippet
+            snippet_text = content[:240].strip()
+            sources_dict[(filename, page)] = (doc_id, snippet_text)
 
         context_str = "\n\n".join(context_chunks)
 
         sources_list = [
-            SourceCitationSchema(file=fname, page=pg, document_id=did)
-            for (fname, pg), did in sources_dict.items()
+            SourceCitationSchema(file=fname, page=pg, document_id=did, snippet=snp)
+            for (fname, pg), (did, snp) in sources_dict.items()
         ]
 
         # Check if the retrieved excerpts are from images

@@ -1,0 +1,23 @@
+name: mayandi-ai
+services:
+  - name: web
+    type: web
+    docker:
+      dockerfile: Dockerfile
+    regions:
+      - fra
+      - was
+    instance_type: free
+    routes:
+      - path: /
+        port: 8000
+    health_checks:
+      - path: /health
+        port: 8000
+        interval: 30
+        timeout: 5
+    env:
+      - key: LLM_MODEL
+        value: openai/gpt-oss-120b
+      - key: MAX_FILE_SIZE_MB
+        value: "10"

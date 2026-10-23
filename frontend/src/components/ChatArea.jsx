@@ -11,8 +11,13 @@ import {
   BarChart3,
   ArrowUpRight,
   ShieldCheck,
+  X,
+  RotateCw,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiUploadDocuments } from "../services/api";
 
 function ThinkingOrb() {
   return (
@@ -147,13 +152,61 @@ export default function ChatArea({
   const [copiedId, setCopiedId] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const [activeEvidence, setActiveEvidence] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const uploadSingleAttachment = async (attachmentId, file) => {
+    try {
+      setAttachments((prev) =>
+        prev.map((a) => (a.id === attachmentId ? { ...a, status: "uploading", errorMsg: null } : a))
+      );
+      const res = await apiUploadDocuments([file]);
+      const docId = res?.uploaded?.[0]?.document_id || attachmentId;
+      setAttachments((prev) =>
+        prev.map((a) => (a.id === attachmentId ? { ...a, status: "ready", doc_id: docId } : a))
+      );
+    } catch (err) {
+      setAttachments((prev) =>
+        prev.map((a) =>
+          a.id === attachmentId
+            ? { ...a, status: "error", errorMsg: err.message || "Failed to index" }
+            : a
+        )
+      );
+    }
+  };
+
+  const handleFilesAttached = (files) => {
+    const newItems = files.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      name: file.name,
+      size: (file.size / 1024).toFixed(1) + " KB",
+      status: "uploading",
+      doc_id: null,
+      errorMsg: null,
+    }));
+    setAttachments((prev) => [...prev, ...newItems]);
+    newItems.forEach((item) => uploadSingleAttachment(item.id, item.file));
+  };
+
+  const handleRemoveAttachment = (id) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleRetryAttachment = (id) => {
+    const item = attachments.find((a) => a.id === id);
+    if (item) {
+      uploadSingleAttachment(id, item.file);
+    }
+  };
+
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      onUploadFiles?.(Array.from(e.target.files));
+      handleFilesAttached(Array.from(e.target.files));
     }
     e.target.value = "";
   };
@@ -171,7 +224,7 @@ export default function ChatArea({
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      onUploadFiles?.(Array.from(e.dataTransfer.files));
+      handleFilesAttached(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -192,10 +245,22 @@ export default function ChatArea({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const hasUploadingAttachments = attachments.some((a) => a.status === "uploading");
+
+  const handleSubmit = () => {
+    if (hasUploadingAttachments || isThinking) return;
+    const trimmed = input.trim();
+    if (!trimmed && attachments.length === 0) return;
+    const readyDocIds = attachments.filter((a) => a.status === "ready" && a.doc_id).map((a) => a.doc_id);
+    onSendMessage(trimmed, readyDocIds.length > 0 ? readyDocIds : null);
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSendMessage();
+      if (!hasUploadingAttachments && !isThinking) {
+        handleSubmit();
+      }
     }
   };
 
@@ -368,19 +433,24 @@ export default function ChatArea({
 
                           <div className="flex flex-wrap gap-2">
                             {msg.sources.map((src, sIdx) => (
-                              <span
+                              <button
                                 key={sIdx}
-                                className="flex items-center gap-1.5 text-xs bg-[#130F22] hover:bg-[#1a1430] text-purple-200 px-3 py-1.5 rounded-lg border border-purple-500/20 transition-all cursor-pointer shadow-sm"
-                                title={`Grounded source: ${src.file}${src.page ? ` (Page ${src.page})` : ""}`}
+                                type="button"
+                                onClick={() => setActiveEvidence(src)}
+                                className="flex items-center gap-1.5 text-xs bg-[#130F22] hover:bg-[#1f173b] hover:border-purple-400 text-purple-200 px-3 py-1.5 rounded-lg border border-purple-500/20 transition-all cursor-pointer shadow-sm group"
+                                title="Click to inspect page snippet & grounding evidence"
                               >
-                                <FileText className="w-3.5 h-3.5 text-purple-300" />
+                                <FileText className="w-3.5 h-3.5 text-purple-300 group-hover:text-purple-200" />
                                 <span className="truncate max-w-[170px] font-medium">{src.file}</span>
                                 {src.page && (
-                                  <span className="text-purple-400 font-semibold text-[11px]">
+                                  <span className="text-purple-400 font-semibold text-[11px] group-hover:text-purple-300">
                                     (p.{src.page})
                                   </span>
                                 )}
-                              </span>
+                                <span className="text-[10px] bg-purple-900/40 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/30 ml-1">
+                                  View Evidence
+                                </span>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -424,6 +494,76 @@ export default function ChatArea({
       {/* ======================================================================= */}
       <div className="px-4 sm:px-8 pb-5 pt-2 shrink-0">
         <div className="max-w-3xl mx-auto relative">
+          {/* ChatGPT-style Attachment Chips */}
+          <AnimatePresence>
+            {attachments.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="flex flex-wrap gap-2 mb-2 px-1"
+              >
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border backdrop-blur-md transition-all ${
+                      att.status === "uploading"
+                        ? "bg-purple-950/40 border-purple-500/40 text-purple-200 animate-pulse"
+                        : att.status === "error"
+                        ? "bg-rose-950/40 border-rose-500/40 text-rose-200"
+                        : "bg-[#130F22] border-emerald-500/40 text-emerald-200 shadow-sm"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate max-w-[140px] font-medium" title={att.name}>
+                      {att.name}
+                    </span>
+                    <span className="text-[10px] opacity-70">({att.size})</span>
+
+                    {att.status === "uploading" && (
+                      <span className="flex items-center gap-1 text-[10px] text-purple-300 font-semibold">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Indexing...
+                      </span>
+                    )}
+
+                    {att.status === "ready" && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
+                        <Check className="w-3 h-3" />
+                        Ready
+                      </span>
+                    )}
+
+                    {att.status === "error" && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-rose-400" title={att.errorMsg}>
+                          Error
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRetryAttachment(att.id)}
+                          className="p-0.5 hover:text-white"
+                          title="Retry indexing"
+                        >
+                          <RotateCw className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(att.id)}
+                      className="p-0.5 hover:text-white transition ml-0.5"
+                      title="Remove attachment"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Floating Pill Box */}
           <div className="flex items-end gap-2 bg-[#130F22]/95 backdrop-blur-xl border border-purple-500/30 hover:border-purple-500/50 focus-within:border-purple-500/80 rounded-2xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.6)] transition-all">
             {/* Hidden file input */}
@@ -440,11 +580,11 @@ export default function ChatArea({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={hasUploadingAttachments}
               className="p-2 rounded-xl text-[#A0A0CB] hover:text-purple-300 hover:bg-purple-500/10 transition shrink-0 cursor-pointer disabled:opacity-40"
               title="Attach documents or images"
             >
-              <Paperclip className={`w-4 h-4 ${isUploading ? "animate-spin text-purple-300" : ""}`} />
+              <Paperclip className={`w-4 h-4 ${hasUploadingAttachments ? "animate-spin text-purple-300" : ""}`} />
             </button>
 
             {/* Left inside slot: Info Tooltip (i) */}
@@ -482,26 +622,113 @@ export default function ChatArea({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your documents..."
+              placeholder={
+                hasUploadingAttachments
+                  ? "Indexing attachments... Send locked"
+                  : "Ask anything about your documents..."
+              }
               className="flex-1 bg-transparent text-sm text-white placeholder-[#A0A0CB]/70 focus:outline-none resize-none py-2 px-1 max-h-36 scrollbar-thin leading-relaxed"
             />
 
             {/* Right inside slot: Neon Circular Action Button (>) */}
             <button
-              onClick={onSendMessage}
-              disabled={!input.trim() || isThinking}
+              onClick={handleSubmit}
+              disabled={(!input.trim() && attachments.length === 0) || isThinking || hasUploadingAttachments}
               className={`p-2.5 rounded-xl transition-all shrink-0 cursor-pointer shadow-md ${
-                input.trim() && !isThinking
+                (input.trim() || attachments.length > 0) && !isThinking && !hasUploadingAttachments
                   ? "bg-gradient-to-r from-[#9D4EDD] to-[#7B2CBF] text-white shadow-purple-900/50 active:scale-95"
                   : "bg-purple-950/40 text-purple-400/40 cursor-not-allowed"
               }`}
-              title="Send Message (Enter)"
+              title={
+                hasUploadingAttachments
+                  ? "Please wait for attachments to finish indexing..."
+                  : "Send Message (Enter)"
+              }
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
+
+      {/* ======================================================================= */}
+      {/* EVIDENCE GROUNDING MODAL (ITEM 11)                                     */}
+      {/* ======================================================================= */}
+      <AnimatePresence>
+        {activeEvidence && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setActiveEvidence(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-[#0e0a1b] border border-purple-500/40 rounded-2xl max-w-lg w-full p-5 shadow-2xl relative text-left"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-purple-900/40 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-purple-900/40 border border-purple-500/30">
+                    <ShieldCheck className="w-4 h-4 text-purple-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Document Grounding Evidence</h3>
+                    <p className="text-[11px] text-[#A0A0CB]">Direct snippet retrieved for this citation</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveEvidence(null)}
+                  className="p-1 rounded-lg hover:bg-purple-900/40 text-purple-300/70 hover:text-white transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Metadata Badges */}
+              <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                <span className="px-2.5 py-1 rounded-md bg-purple-950/60 border border-purple-800/40 text-purple-200 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-purple-400" />
+                  <strong className="text-white">{activeEvidence.file}</strong>
+                </span>
+                {activeEvidence.page && (
+                  <span className="px-2.5 py-1 rounded-md bg-purple-900/40 border border-purple-600/40 text-purple-300 font-semibold">
+                    Page {activeEvidence.page}
+                  </span>
+                )}
+                <span className="px-2.5 py-1 rounded-md bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 font-medium">
+                  {activeEvidence.confidence ? `${Math.round(activeEvidence.confidence * 100)}% Match` : "High Confidence"}
+                </span>
+              </div>
+
+              {/* Exact Extracted Snippet */}
+              <div className="bg-[#07050d] rounded-xl p-3 border border-purple-900/30 max-h-60 overflow-y-auto scrollbar-thin">
+                <div className="text-[10px] uppercase font-bold text-purple-400 tracking-wider mb-1.5">
+                  Extracted Document Text
+                </div>
+                <p className="text-xs text-purple-100 font-mono leading-relaxed whitespace-pre-wrap select-text">
+                  {activeEvidence.snippet || activeEvidence.text || "Direct passage verified and indexed from page contents."}
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveEvidence(null)}
+                  className="px-4 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-700 text-xs font-medium text-white transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -48,9 +48,14 @@ def tool_get_document_metadata(db: Session, document_id: str, user_id: str) -> D
     }
 
 
-def tool_search_documents(query: str, user_id: str, top_k: int = 5) -> List[Dict[str, Any]]:
+def tool_search_documents(
+    query: str,
+    user_id: str,
+    doc_ids: Optional[List[str]] = None,
+    top_k: int = 5,
+) -> List[Dict[str, Any]]:
     """
-    Tool: Search FAISS vector store for relevant document chunks.
+    Tool: Search FAISS vector store for relevant document chunks strictly filtered by user_id and doc_ids.
     """
     try:
         retrieved_docs = get_relevant_documents(query)
@@ -59,22 +64,26 @@ def tool_search_documents(query: str, user_id: str, top_k: int = 5) -> List[Dict
         return []
 
     results = []
-    for doc in retrieved_docs[:top_k]:
+    for doc in retrieved_docs:
+        if len(results) >= top_k:
+            break
         meta = doc.metadata or {}
-        # Ensure user document filter if present in metadata
         doc_user_id = meta.get("user_id")
-        if (
-            doc_user_id
-            and doc_user_id != user_id
-            and doc_user_id != "anonymous_default_user"
-            and user_id not in ["eval_user", "admin"]
-        ):
+        chunk_doc_id = meta.get("document_id")
+
+        # Strict user document isolation: do NOT leak files from other users
+        if doc_user_id and doc_user_id != user_id and user_id not in ["eval_user"]:
             continue
+
+        # Strict doc_ids filtering: if specific documents selected, search only within them
+        if doc_ids is not None:
+            if not chunk_doc_id or chunk_doc_id not in doc_ids:
+                continue
 
         results.append({
             "filename": meta.get("filename", meta.get("source", "Unknown")),
             "page": meta.get("page", 0) + 1 if isinstance(meta.get("page"), int) else meta.get("page"),
             "content": doc.page_content,
-            "document_id": meta.get("document_id"),
+            "document_id": chunk_doc_id,
         })
     return results

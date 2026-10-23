@@ -153,14 +153,18 @@ export async function apiDeleteDocument(documentId) {
   return data;
 }
 
-export async function apiSendMessage(question, conversationId = null) {
+export async function apiSendMessage(question, conversationId = null, doc_ids = null) {
+  const payload = {
+    question,
+    conversation_id: conversationId,
+  };
+  if (doc_ids && doc_ids.length > 0) {
+    payload.doc_ids = doc_ids;
+  }
   const res = await fetch(endpoint("/api/chat"), {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({
-      question,
-      conversation_id: conversationId,
-    }),
+    body: JSON.stringify(payload),
   });
 
   let data = null;

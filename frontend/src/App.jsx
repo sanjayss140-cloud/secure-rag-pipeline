@@ -113,8 +113,8 @@ function SecureRagMain() {
     }
   };
 
-  const handleSendMessage = async () => {
-    const text = input.trim();
+  const handleSendMessage = async (overrideText = null, activeDocIds = null) => {
+    const text = (overrideText !== null ? overrideText : input).trim();
     if (!text || isThinking) return;
 
     const userMsg = {
@@ -129,7 +129,7 @@ function SecureRagMain() {
     setIsThinking(true);
 
     try {
-      const data = await apiSendMessage(text, currentConversationId);
+      const data = await apiSendMessage(text, currentConversationId, activeDocIds);
       if (data.conversation_id && !currentConversationId) {
         setCurrentConversationId(data.conversation_id);
         loadConversations();

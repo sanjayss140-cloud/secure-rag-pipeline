@@ -95,6 +95,7 @@ def process_chat_message(
     user_id: str,
     question: str,
     conversation_id: Optional[str] = None,
+    doc_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Execute complete chat request, save messages to DB, record usage metrics.
@@ -121,7 +122,13 @@ def process_chat_message(
     history = [{"role": m.sender, "content": m.content} for m in history_records[:-1]]
 
     # Run Agent Workflow
-    agent_response: RAGResponseSchema = run_rag_agent(question, user_id, db, history=history)
+    agent_response: RAGResponseSchema = run_rag_agent(
+        question,
+        user_id,
+        db,
+        history=history,
+        doc_ids=doc_ids,
+    )
 
     sources_dicts = [s.model_dump() for s in agent_response.sources]
     sources_json_str = json.dumps(sources_dicts)
@@ -177,6 +184,7 @@ async def stream_chat_response(
     user_id: str,
     question: str,
     conversation_id: Optional[str] = None,
+    doc_ids: Optional[List[str]] = None,
 ) -> AsyncGenerator[str, None]:
     """
     Server-Sent Events (SSE) generator for real-time response streaming.
@@ -185,7 +193,7 @@ async def stream_chat_response(
     yield f"data: {json.dumps({'event': 'status', 'status': 'Analyzing question & searching knowledge base...'})}\n\n"
 
     # Execute RAG Agent
-    result = process_chat_message(db, user_id, question, conversation_id)
+    result = process_chat_message(db, user_id, question, conversation_id, doc_ids=doc_ids)
 
     # 2. Yield token chunks of the answer to client
     full_answer = result["answer"]

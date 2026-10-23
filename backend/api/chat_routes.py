@@ -21,6 +21,7 @@ router = APIRouter(tags=["Chat & RAG"])
 class ChatRequest(BaseModel):
     question: str
     conversation_id: Optional[str] = None
+    doc_ids: Optional[List[str]] = None
     history: Optional[List[dict]] = None
 
 
@@ -51,7 +52,13 @@ def chat(
         )
 
     user_id = _get_user_id(current_user)
-    result = process_chat_message(db, user_id, question, request.conversation_id)
+    result = process_chat_message(
+        db,
+        user_id,
+        question,
+        request.conversation_id,
+        doc_ids=request.doc_ids,
+    )
 
     # Free embeddings memory to keep RAM < 150MB on Render
     try:
@@ -79,6 +86,7 @@ def chat(
 async def chat_stream(
     question: str = Query(..., description="User question"),
     conversation_id: Optional[str] = Query(None),
+    doc_ids: Optional[List[str]] = Query(None),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
@@ -93,7 +101,7 @@ async def chat_stream(
 
     user_id = _get_user_id(current_user)
     return StreamingResponse(
-        stream_chat_response(db, user_id, question.strip(), conversation_id),
+        stream_chat_response(db, user_id, question.strip(), conversation_id, doc_ids=doc_ids),
         media_type="text/event-stream",
     )
 

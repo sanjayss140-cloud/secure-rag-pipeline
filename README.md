@@ -5,10 +5,30 @@
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-v4.0-38B2AC.svg?style=flat&logo=tailwind-css)](https://tailwindcss.com)
 [![FAISS](https://img.shields.io/badge/FAISS-CPU_ONNX-blue.svg?style=flat)](https://github.com/facebookresearch/faiss)
 [![Groq LPU](https://img.shields.io/badge/Groq-Qwen3.8--27B-f55036.svg?style=flat)](https://groq.com)
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Render-46E3B7.svg?style=flat)](https://mayandi.onrender.com)
+[![Tests Passing](https://img.shields.io/badge/Tests-19%2F19%20Passed-success.svg)](https://github.com/sanjayss140-cloud/secure-rag-pipeline)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Live Production Deployment**: [https://mayandi.onrender.com](https://mayandi.onrender.com)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sanjayss140-cloud/secure-rag-pipeline)
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/sanjayss140-cloud/secure-rag-pipeline&branch=main&name=mayandi-ai)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/new?template=https://github.com/sanjayss140-cloud/secure-rag-pipeline)
+
+---
+
+## 🌐 1-Click Permanent Cloud Deployment (24/7 Online)
+
+Deploy a permanent, 24/7 online production instance with automated HTTPS, zero local machine dependencies, and instant cloud scalability:
+
+1. **[Deploy to Koyeb (Free 24/7 Permanent Cloud)](https://app.koyeb.com/deploy?type=git&repository=github.com/sanjayss140-cloud/secure-rag-pipeline&branch=main&name=mayandi-ai)**:
+   - Click the Koyeb button above, sign in with GitHub, enter your `GROQ_API_KEY`, and deploy.
+   - Koyeb provides continuous free hosting with **no monthly suspension limits** and an instant permanent URL `https://mayandi-ai.koyeb.app`.
+2. **[Deploy to Render (1-Click Blueprint)](https://render.com/deploy?repo=https://github.com/sanjayss140-cloud/secure-rag-pipeline)**:
+   - Click the Render button, connect GitHub, and click **Apply Blueprint**.
+   - Render automatically provisions the web service under `https://mayandi.onrender.com`.
+3. **[Deploy to Hugging Face Spaces (Free 16GB RAM)](https://huggingface.co/new-space)**:
+   - Create a new Space on Hugging Face, select **Docker**, connect this GitHub repo (`sanjayss140-cloud/secure-rag-pipeline`).
+   - Hugging Face hosts the container 24/7 permanently for free with **16 GB RAM** at `https://<username>-mayandi-ai.hf.space`.
+
+---
 
 **Mayandi AI** (SecureRAG 2.0) is a multimodal, privacy-first AI knowledge assistant. It combines **ChatGPT-grade conversational intelligence, deep programming reasoning, and mathematical logic** with a **private document retrieval engine (RAG)** capable of ingesting PDFs, Word documents, source code, data files, and images.
 
